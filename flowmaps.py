@@ -246,3 +246,48 @@ def constructName(filename_densbase, filename_flowbase, frame,
             filename_flowbase, separator, frame_filename, extension)
 
     return (filename_densmap, filename_flowmap)
+
+def resetFields(data, fields_reset):
+    """Resets specified fields in dictionary data."""
+    
+    for field, values in data.items():
+        if field in fields_reset:
+            data[field] = []
+
+def newReadDensmap(densmap_data):
+    """Reads a density map and stores values in dictionary."""
+
+    densmap = open(densmap_data['filename'])
+
+    fields = ['X', 'Y', 'N', 'T', 'M']
+    resetFields(densmap_data, fields)
+
+    # Assert that first line is good header and read rest of file
+    header = densmap.readline().strip().upper().split()
+
+    if header == fields:
+        print("Reading density map '%s' ..." 
+                % densmap_data['filename'], end = ' ', flush = True)
+
+        line = densmap.readline().strip()
+        while (line != ''):
+            values = line.split()
+
+            if len(values) == 5:
+                for i, value in enumerate(values):
+                    densmap_data[fields[i]].append(float(value))
+
+            line = densmap.readline().strip()
+
+        # Convert values in N to integer
+        for i, value in enumerate(densmap_data['N']):
+            densmap_data['N'][i] = int(value)
+
+        print("Done.")
+        densmap_data['read'] = 1
+
+    else:
+        print("No good density map: '%s'" % densmap_data['filename'])
+        densmap_data['read'] = 0
+    
+    densmap.close()
