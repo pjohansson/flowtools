@@ -50,6 +50,8 @@ def save_data_to_file(system, saveto_filename):
         saveto.write(line)
     saveto.close()
 
+    return None
+
 def read_data_from_densmap(system, densmap):
     """Reads system data into dictionary from density map."""
 
@@ -129,7 +131,9 @@ def draw_temperature(densmap, system, Tmin = 1, **kwargs):
     hist2d(densmap['X'], densmap['Y'], weights = densmap['T'], 
             bins = system['numcells'], cmin = Tmin, **kwargs)
 
-def cut_map(map_to_cut, fields_to_cut, **kwargs):
+    return None
+
+def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     """Cuts given fields for positions inside, specified by giving arrays
     using keywords 'cutw' and 'cuth' for width and height respectively. 
     Fields are given as a set."""
@@ -164,6 +168,11 @@ def cut_map(map_to_cut, fields_to_cut, **kwargs):
 
     print("Done.")
 
+    read_system(system, map_to_cut)
+    print("System cell data updated.")
+
+    return None
+
 def unmod_visc_flow(X, Y, U, V, data, filename_viscdata, 
         cut_height = [-1.0, -1.0]):
     """Uses data of viscosity increase close to a substrate to reverse the
@@ -184,6 +193,8 @@ def unmod_visc_flow(X, Y, U, V, data, filename_viscdata,
     # Divide by unmodified flow
     # Output
 
+    return None
+
 def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
     """Advances the frame number by frame_stride (default is one frame)
     and updates filenames to read. Does not read new maps. Does warn if
@@ -193,11 +204,15 @@ def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
     new_densfn, new_flowfn = construct_filename(system, new_frame, **kwargs)
     print(new_densfn, new_flowfn)
 
+    return None
+
 def parse_kwars(opts, kwargs):
     """Gives warning if an input_kwarg does not exist in avail_kwargs."""
     for arg in kwargs.keys():
         if arg in opts.keys():
             opts[arg] = kwargs[arg]
+
+    return None
 
 def construct_filename(system, frame, **kwargs): 
     """Constructs filenames of density and flow maps from given bases and 
@@ -221,6 +236,8 @@ def reset_fields(data, fields_reset):
     
     for field in fields_reset:
         data[field] = []
+
+    return None
 
 def read_densmap(densmap_data):
     """Reads a density map and stores values in dictionary."""
@@ -260,6 +277,8 @@ def read_densmap(densmap_data):
     
     densmap.close()
 
+    return None
+
 def read_flowmap(flowmap_data):
     """Reads a flow map and stores values in dictionary."""
 
@@ -293,3 +312,5 @@ def read_flowmap(flowmap_data):
         flowmap_data['read'] = 0
     
     flowmap.close()
+
+    return None
