@@ -2,7 +2,7 @@
 from pylab import hist2d
 from numpy import inf
 
-def readSystem(system, data, output_filename = ''):
+def read_system(system, data, output_filename = ''):
     """If a precalculated data file is supplied, reads and stores total 
     number of cells N, as well as number of cells [Nx, Ny], cell dimensions
     [size_x, size_y] and system displacement [disp_x, disp_y] in each 
@@ -14,7 +14,7 @@ def readSystem(system, data, output_filename = ''):
 
     if output_filename == '':
         print("Reading data file '%s' ..." % system['datafile'] , end = ' ') 
-        success = readDatafile(system)
+        success = read_datafile(system)
         if success == 1:
             print("Done.")
         else:
@@ -29,7 +29,7 @@ def readSystem(system, data, output_filename = ''):
         print("Saving data to file '%s' ... " % output_filename, end = '')
         print("Done.")
 
-def readDatafile(system):
+def read_datafile(system):
     """Reads a data file and stores it in system. Returns a success flag."""
 
     datafile = open(system['datafile'], 'r')
@@ -67,7 +67,7 @@ def readDatafile(system):
 
     return flag
 
-def drawTemperature(densmap, system, Tmin = 1, **kwargs):
+def draw_temperature(densmap, system, Tmin = 1, **kwargs):
     """Draws the temperature array T corresponding to cell positions
     X and Y in a figure using a weighted 2d histogram and data for number
     of bins. Can additionally be called with minimum temperature as cmin 
@@ -76,7 +76,7 @@ def drawTemperature(densmap, system, Tmin = 1, **kwargs):
     hist2d(densmap['X'], densmap['Y'], weights = densmap['T'], 
             bins = system['numcells'], cmin = Tmin, **kwargs)
 
-def cutMap(map_to_cut, fields_to_cut, **kwargs):
+def cut_map(map_to_cut, fields_to_cut, **kwargs):
     """Cuts given fields for positions inside, specified by giving arrays
     using keywords 'cutw' and 'cuth' for width and height respectively. 
     Fields are given as a set."""
@@ -85,7 +85,7 @@ def cutMap(map_to_cut, fields_to_cut, **kwargs):
 
     print("Trying to cut fields ...", end = ' ', flush = True)
 
-    parseKwars(opts, kwargs)
+    parse_kwars(opts, kwargs)
 
     # Assert that cut area is positive
     if opts['cutw'][0] > opts['cutw'][1] or opts['cuth'][0] > opts['cuth'][1]:
@@ -111,7 +111,7 @@ def cutMap(map_to_cut, fields_to_cut, **kwargs):
 
     print("Done.")
 
-def unmodViscFlow(X, Y, U, V, data, filename_viscdata, 
+def unmod_visc_flow(X, Y, U, V, data, filename_viscdata, 
         cut_height = [-1.0, -1.0]):
     """Uses data of viscosity increase close to a substrate to reverse the
     effect of it on a flowmap. Returns a one-dimensional array of the 
@@ -131,29 +131,29 @@ def unmodViscFlow(X, Y, U, V, data, filename_viscdata,
     # Divide by unmodified flow
     # Output
 
-def advanceFrame(system, densmap, flowmap, frame_stride = 1, **kwargs):
+def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
     """Advances the frame number by frame_stride (default is one frame)
     and updates filenames to read. Does not read new maps. Does warn if
     no files found for new frame."""
 
     new_frame = system['frame'] + frame_stride
-    new_densfn, new_flowfn = constructFilename(system, new_frame, **kwargs)
+    new_densfn, new_flowfn = construct_filename(system, new_frame, **kwargs)
     print(new_densfn, new_flowfn)
 
-def parseKwars(opts, kwargs):
+def parse_kwars(opts, kwargs):
     """Gives warning if an input_kwarg does not exist in avail_kwargs."""
     for arg in kwargs.keys():
         if arg in opts.keys():
             opts[arg] = kwargs[arg]
 
-def constructFilename(system, frame, **kwargs): 
+def construct_filename(system, frame, **kwargs): 
     """Constructs filenames of density and flow maps from given bases and 
     frame number. In **kwargs a separator can be set using 'sep', extension
     using 'ext' and number of zeros 'numd'."""
 
     opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
 
-    parseKwars(opts, kwargs)
+    parse_kwars(opts, kwargs)
 
     frame_filename = ('%0' + ('%d' % opts['numd']) + 'd') % frame
     filename_densmap = '%s%s%s%s' % (
@@ -163,19 +163,19 @@ def constructFilename(system, frame, **kwargs):
 
     return (filename_densmap, filename_flowmap)
 
-def resetFields(data, fields_reset):
+def reset_fields(data, fields_reset):
     """Resets specified fields in dictionary data."""
     
     for field in fields_reset:
         data[field] = []
 
-def readDensmap(densmap_data):
+def read_densmap(densmap_data):
     """Reads a density map and stores values in dictionary."""
 
     densmap = open(densmap_data['filename'])
 
     fields = ['X', 'Y', 'N', 'T', 'M']
-    resetFields(densmap_data, fields)
+    reset_fields(densmap_data, fields)
 
     # Assert that first line is good header and read rest of file
     header = densmap.readline().strip().upper().split()
@@ -207,13 +207,13 @@ def readDensmap(densmap_data):
     
     densmap.close()
 
-def readFlowmap(flowmap_data):
+def read_flowmap(flowmap_data):
     """Reads a flow map and stores values in dictionary."""
 
     flowmap = open(flowmap_data['filename'])
 
     fields = ['X', 'Y', 'U', 'V']
-    resetFields(flowmap_data, fields)
+    reset_fields(flowmap_data, fields)
 
     # Assert that first line is good header and read rest of file
     header = flowmap.readline().strip().upper().split()
