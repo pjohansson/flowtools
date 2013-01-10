@@ -2,45 +2,93 @@
 from pylab import hist2d
 from numpy import inf
 
-def read_system(system, data, output_filename = ''):
-    """If a precalculated data file is supplied, reads and stores total 
-    number of cells N, as well as number of cells [Nx, Ny], cell dimensions
-    [size_x, size_y] and system displacement [disp_x, disp_y] in each 
-    direction in system dictionary.
-    
-    The function can also read and save this data to a file by instead 
-    supplying a density map as the first argument, and a file to save this 
-    data to in the second. The data will still be stored."""
+def read_system(system, densmap = {}, saveto_filename = ''):
+    """If a precalculated data file is supplied in the system dictionary as
+    system['datafile'], reads and stores total number of cells, as well as 
+    for each direction the number of cells, cell dimensions, and system 
+    displacement, in the same dictionary.
 
-    if output_filename == '':
+    The function can also read this data from a density map, given as an
+    optional second argument. This data can be further saved by supplying
+    a location of a file to store it in as a third argument."""
+
+    if densmap == {}:
         print("Reading data file '%s' ..." % system['datafile'] , end = ' ') 
-        success = read_datafile(system)
-        if success == 1:
+        success = read_data_from_file(system)
+        if success:
             print("Done.")
         else:
             print("Could not read file.")
 
     else:
-        print("NOT IMPLEMENTED YET.")
-        data = (0, [], [], [])
-        print("Reading density map '%s' for data ... " % input_filename, 
-                end = '')
-        print("Done.")
-        print("Saving data to file '%s' ... " % output_filename, end = '')
-        print("Done.")
+        success = read_data_from_densmap(system, densmap)
+        if success and saveto_filename != '':
+            save_data_to_file(system, saveto_filename)
 
-def read_datafile(system):
+    return None
+
+def save_data_to_file(system, saveto_filename):
+    """Prints system data information to a text file."""
+
+    saveto = open(saveto_filename, 'w')
+    fields = {
+            'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
+            }
+
+    for field in fields:
+        line = field + ' ='
+
+        if type(system[field]) == list:
+            for value in system[field]:
+                line += ' %s' % value
+        else:
+            line += ' %s' % system[field]
+
+        line.strip()
+        line += '\n'
+
+        saveto.write(line)
+    saveto.close()
+
+def read_data_from_densmap(system, densmap):
+    """Reads system data into dictionary from density map."""
+
+    print("Reading density map data ...", end = ' ', flush = True)
+    
+    if not ({'X', 'Y'} < densmap.keys()):
+        print("Density map is not read yet.")
+        return False
+
+    numcells_total = len(densmap['X'])
+
+    X_first = densmap['X'][0]
+    for cell, X_value in enumerate(densmap['X']):
+        if X_value != X_first:
+            break
+
+    numcells_y = cell
+    numcells_x = numcells_total // numcells_y
+
+    cell_dimensions_x = densmap['X'][numcells_y] - densmap['X'][0]
+    cell_dimensions_y = densmap['Y'][1] - densmap['Y'][0]
+
+    system['numcellstotal'] = numcells_total
+    system['numcells'] = [numcells_x, numcells_y]
+    system['celldimensions'] = [cell_dimensions_x, cell_dimensions_y]
+    system['initdisplacement'] = [densmap['X'][0], densmap['Y'][0]]
+
+    print("Done.")
+
+    return True
+
+def read_data_from_file(system):
     """Reads a data file and stores it in system. Returns a success flag."""
 
     datafile = open(system['datafile'], 'r')
 
-    data_list = {'numcellstotal', 'numcells', 'celldimensions', 
-            'initdisplacement'}
-
-    # Reset read data
-    for data in data_list:
-        if data in system.keys():
-            del(system[data])
+    data_list = {
+            'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
+            }
 
     line = datafile.readline().strip()
     while (line != ''):
@@ -61,11 +109,16 @@ def read_datafile(system):
         system['numcells'][0] = int(system['numcells'][0])
         system['numcells'][1] = int(system['numcells'][1])
 
-        flag = 1
+        success = True
     else:
-        flag = 0
+        # Reset read data
+        for data in data_list:
+            if data in system.keys():
+                del(system[data])
 
-    return flag
+        success = False
+
+    return success
 
 def draw_temperature(densmap, system, Tmin = 1, **kwargs):
     """Draws the temperature array T corresponding to cell positions
