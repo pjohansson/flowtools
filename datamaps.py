@@ -1,6 +1,11 @@
 """Contains functions that operate on density and flow field maps."""
 
 from numpy import inf
+from draw import *
+from util import *
+from viscosity import *
+
+BOLTZ = 8.6173E-5 # eV / K 
 
 def read_system(system, densmap = {}, saveto_filename = ''):
     """If a precalculated data file is supplied in the system dictionary as
@@ -254,3 +259,13 @@ def construct_filename(system, frame, **kwargs):
             system['flowbase'], opts['sep'], frame_filename, opts['ext'])
 
     return (filename_densmap, filename_flowmap)
+
+def calc_energy(densmap):
+    """Calculates the kinetic energy in cells from the temperature, stores
+    in dict with keyword 'E'."""
+
+    reset_fields(densmap, {'E'})
+
+    for temp, numatoms in zip(densmap['T'], densmap['N']):
+        energy = 2 * BOLTZ * numatoms * temp
+        densmap['E'].append(energy)
