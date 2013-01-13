@@ -35,7 +35,12 @@ def read_system(system, densmap = {}, saveto_filename = ''):
 def read_densmap(densmap_data):
     """Reads a density map and stores values in dictionary."""
 
-    densmap = open(densmap_data['filename'])
+    try:
+        densmap = open(densmap_data['filename'])
+    except IOError:
+        print("Could not open density map '%s' for reading." 
+                % densmap_data['filename'])
+        return None
 
     fields = ['X', 'Y', 'N', 'T', 'M']
     reset_fields(densmap_data, fields)
@@ -62,11 +67,11 @@ def read_densmap(densmap_data):
             densmap_data['N'][i] = int(value)
 
         print("Done.")
-        densmap_data['read'] = 1
+        densmap_data['read'] = True
 
     else:
         print("No good density map: '%s'" % densmap_data['filename'])
-        densmap_data['read'] = 0
+        densmap_data['read'] = False
     
     densmap.close()
 
@@ -75,7 +80,12 @@ def read_densmap(densmap_data):
 def read_flowmap(flowmap_data):
     """Reads a flow map and stores values in dictionary."""
 
-    flowmap = open(flowmap_data['filename'])
+    try:
+        flowmap = open(flowmap_data['filename'])
+    except IOError:
+        print("Could not open flow map '%s' for reading." 
+                % flowmap_data['filename'])
+        return None
 
     fields = ['X', 'Y', 'U', 'V']
     reset_fields(flowmap_data, fields)
@@ -98,11 +108,12 @@ def read_flowmap(flowmap_data):
             line = flowmap.readline().strip()
 
         print("Done.")
-        flowmap_data['read'] = 1
+        flowmap_data['read'] = True
+
 
     else:
         print("No good flow map: '%s'" % flowmap_data['filename'])
-        flowmap_data['read'] = 0
+        flowmap_data['read'] = False
     
     flowmap.close()
 
@@ -142,7 +153,12 @@ def read_data_from_densmap(system, densmap):
 def read_data_from_file(system):
     """Reads a data file and stores it in system. Returns a success flag."""
 
-    datafile = open(system['datafile'], 'r')
+    try: 
+        datafile = open(system['datafile'], 'r')
+    except IOError:
+        print("Could not open data file '%s' for reading." 
+                % system['datafile'])
+        return False
 
     data_list = {
             'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
@@ -181,7 +197,12 @@ def read_data_from_file(system):
 def save_data_to_file(system, saveto_filename):
     """Prints system data information to a text file."""
 
-    saveto = open(saveto_filename, 'w')
+    try:
+        saveto = open(saveto_filename, 'w')
+    except IOError:
+        print("Could not open '%s' for writing data to." % saveto_filename)
+        return None
+
     fields = {
             'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
             }
@@ -208,28 +229,27 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     using keywords 'cutw' and 'cuth' for width and height respectively. 
     Fields are given as a set."""
 
-    opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf]}
-
     print("Trying to cut fields ...", end = ' ', flush = True)
 
+    opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf]}
     parse_kwars(opts, kwargs)
+
+    # 'X' and 'Y' implicit to cut
+    for field in {'X', 'Y'}:
+        fields_to_cut.add(field)
 
     # Assert that cut area is positive
     if opts['cutw'][0] > opts['cutw'][1] or opts['cuth'][0] > opts['cuth'][1]:
         print("Cannot cut negative space!")
-        return 
-
-    # 'X' and 'Y' implicit to cut
-    for field in ('X', 'Y'):
-        fields_to_cut.add(field)
+        return None
 
     # Create new fields to keep
     keep = {field : [] for field in fields_to_cut}
 
-    for i in range(len(map_to_cut['X'])):
-        # Check if inside
-        if opts['cutw'][0] < map_to_cut['X'][i] < opts['cutw'][1] \
-                and opts['cuth'][0] < map_to_cut['Y'][i] < opts['cuth'][1]:
+    # Check if inside
+    for i, (pos_x, pos_y) in enumerate(zip(map_to_cut['X'], map_to_cut['Y'])):
+        if opts['cutw'][0] < pos_x < opts['cutw'][1] \
+                and opts['cuth'][0] < pos_y < opts['cuth'][1]:
             for field in fields_to_cut:
                 keep[field].append(map_to_cut[field][i])
 
@@ -243,23 +263,6 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
 
     return None
 
-def construct_filename(system, frame, **kwargs): 
-    """Constructs filenames of density and flow maps from given bases and 
-    frame number. In **kwargs a separator can be set using 'sep', extension
-    using 'ext' and number of zeros 'numd'."""
-
-    opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
-
-    parse_kwars(opts, kwargs)
-
-    frame_filename = ('%0' + ('%d' % opts['numd']) + 'd') % frame
-    filename_densmap = '%s%s%s%s' % (
-            system['densbase'], opts['sep'], frame_filename, opts['ext'])
-    filename_flowmap = '%s%s%s%s' % (
-            system['flowbase'], opts['sep'], frame_filename, opts['ext'])
-
-    return (filename_densmap, filename_flowmap)
-
 def calc_energy(densmap):
     """Calculates the kinetic energy in cells from the temperature, stores
     in dict with keyword 'E'."""
@@ -269,3 +272,5 @@ def calc_energy(densmap):
     for temp, numatoms in zip(densmap['T'], densmap['N']):
         energy = 2 * BOLTZ * numatoms * temp
         densmap['E'].append(energy)
+
+    return None
