@@ -232,7 +232,7 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     print("Trying to cut fields ...", end = ' ', flush = True)
 
     opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf]}
-    parse_kwars(opts, kwargs)
+    parse_kwargs(opts, kwargs)
 
     # 'X' and 'Y' implicit to cut
     for field in {'X', 'Y'}:

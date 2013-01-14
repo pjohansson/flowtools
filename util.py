@@ -30,7 +30,7 @@ def construct_filename(system, **kwargs):
     using 'ext' and number of zeros 'numd'."""
 
     opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
-    parse_kwars(opts, kwargs)
+    parse_kwargs(opts, kwargs)
 
     frame_name = ('%0' + ('%d' % opts['numd']) + 'd') % system['frame']
     tail = opts['sep'] + frame_name + opts['ext']
@@ -40,7 +40,7 @@ def construct_filename(system, **kwargs):
 
     return (filename_densmap, filename_flowmap)
 
-def parse_kwars(opts, kwargs):
+def parse_kwargs(opts, kwargs):
     """Parses a kwargs array and sets any already in opts to 
     specified values."""
 
