@@ -24,9 +24,9 @@ def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
 
     return success
 
-def construct_filename(system, **kwargs): 
-    """Constructs filenames of density and flow maps from given bases and 
-    frame number. In **kwargs a separator can be set using 'sep', extension
+def construct_filename(data_map, base, frame, **kwargs): 
+    """Constructs filenames of data maps from given base and frame number. 
+    In **kwargs a separator can be set using 'sep', extension
     using 'ext' and number of zeros 'numd'."""
 
     opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
@@ -35,10 +35,9 @@ def construct_filename(system, **kwargs):
     frame_name = ('%0' + ('%d' % opts['numd']) + 'd') % system['frame']
     tail = opts['sep'] + frame_name + opts['ext']
 
-    filename_densmap = system['densbase'] + tail
-    filename_flowmap = system['flowbase'] + tail
+    data_map['filename'] = base + tail
 
-    return (filename_densmap, filename_flowmap)
+    return None
 
 def parse_kwars(opts, kwargs):
     """Parses a kwargs array and sets any already in opts to 
