@@ -18,11 +18,15 @@ def find_cells_in_row(row, flowmap, system):
     return None
 
 def find_edges_in_row(row, system):
-    """Simple function to find the edges of a row."""
+    """Simple function to find the edges of a row, saved to row['edges'].
+    If row is empty, so is the value set to."""
 
-    edge_min = min(row['X']) - system['celldimensions'][0] / 2
-    edge_max = max(row['X']) + system['celldimensions'][0] / 2
-    row['edges'] = [edge_min, edge_max]
+    if row['X'] != []:
+        edge_min = min(row['X']) - system['celldimensions'][0] / 2
+        edge_max = max(row['X']) + system['celldimensions'][0] / 2
+        row['edges'] = [edge_min, edge_max]
+    else:
+        row['edges'] = []
 
     return None
 

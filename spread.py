@@ -17,12 +17,21 @@ def plot_spread_vs_time(system, frames, **kwargs):
     trim_empty_head(contact_line, frames)
 
     if 'delta_t' in system.keys():
+        time = []
         for i, value in enumerate(frames):
-            frames[i] = i * system['delta_t']
+            time[i] = i * system['delta_t']
 
-    plot(contact_line['edges'][0], frames, contact_line['edges'][1], frames)
+        draw_spread_time(contact_line, time)
 
     return None
+
+def draw_spread_time(contact_line, time, **kwargs):
+    """Draws a plot of a spreading droplet on a surface as a function of
+    time. Plotting commands can be set using **kwargs."""
+
+    plot(contact_line['spread'], frames)
+    xlabel('Time (ps)'); ylabel('Spread of contact line (nm)');
+    title('Spread of contact line of droplet on a quadrupole surface.')
 
 def find_contact_line_spread(contact_line, system, frames, **kwargs):
     """Finds the spread of a droplet as a function of time by reading flowmaps
@@ -58,7 +67,10 @@ def find_contact_line_spread(contact_line, system, frames, **kwargs):
         find_edges_in_row(row, system)
 
         contact_line['frame'].append(system['frame'])
-        contact_line['edges'].append(row['edges'])
+        if row['edges'] != []:
+            contact_line['spread'].append(row['edges'][1] - row['edges'][0])
+        else:
+            contact_line['spread'].append(0)
 
     return None
 
@@ -67,7 +79,7 @@ def trim_empty_head(contact_line, frames):
     and trims frames to fit from back. The remainder is a contact_line with
     values starting from first impact and frames counting from that point."""
 
-    while contact_line['edges'][0] == []:
+    while contact_line['spread'][0] == 0:
         for field in contact_line.keys():
             del(contact_line[field][0])
         del(frames[-1])
