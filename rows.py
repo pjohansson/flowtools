@@ -2,6 +2,30 @@
 
 from util import reset_fields
 
+def find_cells_in_row(row, flowmap, system):
+    """Finds filled cells in a row from a flow map. Checks that cells are well
+    connected."""
+
+    fields = {'X', 'U', 'V'}
+    reset_fields(row, fields)
+    calc_row_y(row, system)
+
+    for i, pos_y in enumerate(flowmap['Y']):
+        if row['y_min'] < pos_y <= row['y_max']:
+            for field in fields:
+                row[field].append(flowmap[field][i])
+
+    return None
+
+def find_edges_in_row(row, system):
+    """Simple function to find the edges of a row."""
+
+    edge_min = min(row['X']) - system['celldimensions'][0] / 2
+    edge_max = max(row['X']) + system['celldimensions'][0] / 2
+    row['edges'] = [edge_min, edge_max]
+
+    return None
+
 def keep_droplet_cells_in_row(row, flowmap, system):
     """Goes through all cells in a row and controls if it is well connected 
     to a layer above it. If not it is discarded."""
@@ -44,30 +68,6 @@ def control_cell(pos_x, row_two, system):
         success = False
 
     return success
-
-def find_edges_in_row(row, system):
-    """Simple function to find the edges of a row."""
-
-    edge_min = min(row['X']) - system['celldimensions'][0] / 2
-    edge_max = max(row['X']) + system['celldimensions'][0] / 2
-    row['edges'] = [edge_min, edge_max]
-
-    return None
-
-def find_cells_in_row(row, flowmap, system):
-    """Finds filled cells in a row from a flow map. Checks that cells are well
-    connected."""
-
-    fields = {'X', 'U', 'V'}
-    reset_fields(row, fields)
-    calc_row_y(row, system)
-
-    for i, pos_y in enumerate(flowmap['Y']):
-        if row['y_min'] < pos_y <= row['y_max']:
-            for field in fields:
-                row[field].append(flowmap[field][i])
-
-    return None
 
 def calc_row_y(row, system):
     """Calculates the minimum, maximum and center position in y for a 

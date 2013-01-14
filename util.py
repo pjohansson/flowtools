@@ -41,7 +41,9 @@ def construct_filename(system, **kwargs):
     return (filename_densmap, filename_flowmap)
 
 def parse_kwars(opts, kwargs):
-    """Gives warning if an input_kwarg does not exist in avail_kwargs."""
+    """Parses a kwargs array and sets any already in opts to 
+    specified values."""
+
     for arg in kwargs.keys():
         if arg in opts.keys():
             opts[arg] = kwargs[arg]
