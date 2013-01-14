@@ -32,7 +32,7 @@ def construct_filename(data_map, base, frame, **kwargs):
     opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
     parse_kwars(opts, kwargs)
 
-    frame_name = ('%0' + ('%d' % opts['numd']) + 'd') % system['frame']
+    frame_name = ('%0' + ('%d' % opts['numd']) + 'd') % frame
     tail = opts['sep'] + frame_name + opts['ext']
 
     data_map['filename'] = base + tail
