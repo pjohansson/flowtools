@@ -1,14 +1,15 @@
 """Module containing tools for rows in data maps."""
 
 from util import reset_fields
+from numpy import floor
 
 def find_cells_in_row(row, flowmap, system):
     """Finds filled cells in a row from a flow map. Checks that cells are well
     connected."""
 
     fields = {'X', 'U', 'V'}
-    reset_fields(row, fields)
     calc_row_y(row, system)
+    reset_fields(row, fields)
 
     for i, pos_y in enumerate(flowmap['Y']):
         if row['y_min'] < pos_y <= row['y_max']:
@@ -30,13 +31,20 @@ def find_edges_in_row(row, system):
 
     return None
 
-def keep_droplet_cells_in_row(row, flowmap, system):
+def keep_droplet_cells_in_row(row, flowmap, system, above = True):
     """Goes through all cells in a row and controls if it is well connected 
-    to a layer above it. If not it is discarded."""
+    to a layer above it. If not it is discarded.
+    
+    Instead of the layer above, the one below can be controlled by giving
+    the final input as above = False."""
 
     fields = {'X', 'U', 'V'}
 
-    row_two = {'num' : row['num'] + 1}
+    if above:
+        row_two = {'num' : row['num'] + 1}
+    else:
+        row_two = {'num' : row['num'] - 1}
+
     find_cells_in_row(row_two, flowmap, system)
 
     keep = {field : [] for field in fields}
@@ -50,6 +58,43 @@ def keep_droplet_cells_in_row(row, flowmap, system):
         row[field] = keep[field]
 
     return None
+
+def keep_droplet_cells_in_system(flowmap, system):
+    """Remove all cells not part of droplet from flowmap."""
+
+    row = {}
+    fields = {'X', 'Y', 'U', 'V'}
+
+    row_min = find_row(min(flowmap['Y']), system)
+    row_max = find_row(max(flowmap['Y']), system)
+
+    keep = {field : [] for field in fields}
+
+    for row['num'] in range(row_min, row_max + 1):
+        find_cells_in_row(row, flowmap, system)
+
+        if row['num'] < row_max:
+            keep_droplet_cells_in_row(row, flowmap, system)
+        else:
+            keep_droplet_cells_in_row(row, flowmap, system, above = False)
+        
+        for field in fields:
+            keep[field].append(row[field])
+
+    for field in fields:
+        flowmap[field] = keep[field]
+
+    return None
+
+def find_row(height, system):
+    """Returns the corresponding cell row of the system for a certain height."""
+
+    print(system)
+    relative_position = height - system['initdisplacement'][1] - \
+            system['celldimensions'][1]
+    row = int(floor(relative_position / system['celldimensions'][1]))
+
+    return row
 
 def control_cell(pos_x, row_two, system):
     """Controls if a cell is well connected to a layer above it, that is
@@ -80,6 +125,6 @@ def calc_row_y(row, system):
     row['y_min'] = system['initdisplacement'][1] + \
             system['celldimensions'][1] * (row['num'] - 0.5)
     row['y_max'] = row['y_min'] + system['celldimensions'][1]
-    row['pos_y'] = row['y_min'] + system['celldimensions'][1] / 2
+    row['Y'] = row['y_min'] + system['celldimensions'][1] / 2
 
     return None

@@ -4,6 +4,7 @@ from util import construct_filename, parse_kwargs
 from datamaps import read_flowmap, cut_map
 from draw import draw_flowmap
 from pylab import figure
+from rows import keep_droplet_cells_in_system
 
 def plot_flowmaps(system, frames, **kwargs):
     """Draws quiver plots of flow maps for specified frames. If no system
@@ -17,7 +18,6 @@ def plot_flowmaps(system, frames, **kwargs):
     opts = {'cutw' : None, 'cuth' : None}
     parse_kwargs(opts, kwargs)
 
-
     for frame in frames:
         construct_filename(flowmap, system['flowbase'], frame)
         read_flowmap(flowmap)
@@ -25,14 +25,7 @@ def plot_flowmaps(system, frames, **kwargs):
         if (opts['cutw'] or opts['cuth']) != None:
             cut_map(flowmap, {'X', 'Y', 'U', 'V'}, system, **kwargs)
 
+        keep_droplet_cells_in_system(flowmap, system)
+
         figure()
         draw_flowmap(flowmap, system, **kwargs)
-
-
-
-def cut_non_droplet_cells(flowmap, system):
-    """Remove all cells not part of droplet from flowmap."""
-
-    for all rows:
-        find_cells_in_row(row, flowmap, system):
-        keep_droplet_cells_in_row(row, flowmap, system):
