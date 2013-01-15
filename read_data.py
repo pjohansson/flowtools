@@ -188,33 +188,3 @@ def read_data_from_file(system):
         success = False
 
     return success
-
-def save_data_to_file(system, saveto_filename):
-    """Prints system data information to a text file."""
-
-    try:
-        saveto = open(saveto_filename, 'w')
-    except IOError:
-        print("Could not open '%s' for writing data to." % saveto_filename)
-        return None
-
-    fields = {
-            'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
-            }
-
-    for field in fields:
-        line = field + ' ='
-
-        if type(system[field]) == list:
-            for value in system[field]:
-                line += ' %s' % value
-        else:
-            line += ' %s' % system[field]
-
-        line.strip()
-        line += '\n'
-
-        saveto.write(line)
-    saveto.close()
-
-    return None
