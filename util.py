@@ -24,7 +24,7 @@ def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
 
     return success
 
-def construct_filename(data_map, base, frame, **kwargs): 
+def construct_filename(base, frame, **kwargs): 
     """Constructs filenames of data maps from given base and frame number. 
     In **kwargs a separator can be set using 'sep', extension
     using 'ext' and number of zeros 'numd'."""
@@ -35,9 +35,9 @@ def construct_filename(data_map, base, frame, **kwargs):
     frame_name = ('%0' + ('%d' % opts['numd']) + 'd') % frame
     tail = opts['sep'] + frame_name + opts['ext']
 
-    data_map['filename'] = base + tail
+    filename = base + tail
 
-    return None
+    return filename
 
 def parse_kwargs(opts, kwargs):
     """Parses a kwargs array and sets any already in opts to 
