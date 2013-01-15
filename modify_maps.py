@@ -10,25 +10,26 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     using keywords 'cutw' and 'cuth' for width and height respectively. 
     Fields are given as a set."""
 
-    print("Trying to cut fields ...", end = ' ', flush = True)
-
-    opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf]}
+    opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf], 'print' = True}
     parse_kwargs(opts, kwargs)
 
-    # 'X' and 'Y' implicit to cut
+    if opts['print']:
+        print("Trying to cut fields ...", 
+                end = ' ', flush = True)
+
     for field in {'X', 'Y'}:
         fields_to_cut.add(field)
 
-    # Assert that cut area is positive
-    if opts['cutw'][0] > opts['cutw'][1] or opts['cuth'][0] > opts['cuth'][1]:
-        print("Cannot cut negative space!")
+    if opts['cutw'][0] > opts['cutw'][1] \
+            or opts['cuth'][0] > opts['cuth'][1]:
+        if opts['print']:
+            print("Cannot cut negative space!")
+
         return None
 
-    # Create new fields to keep
     keep = {field : [] for field in fields_to_cut}
 
-    # Check if inside
-    for i, (pos_x, pos_y) in enumerate(zip(map_to_cut['X'], map_to_cut['Y'])):
+    for i, (pos_x, pos_y) in enumerate( zip(map_to_cut['X'], map_to_cut['Y']) ):
         if opts['cutw'][0] < pos_x < opts['cutw'][1] \
                 and opts['cuth'][0] < pos_y < opts['cuth'][1]:
             for field in fields_to_cut:
@@ -37,11 +38,9 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     for field in (fields_to_cut):
         map_to_cut[field] = keep[field]
 
-    print("Done.")
-
-    read_system(system, map_to_cut)
-    print("System cell data updated.")
-
+    if opts['print']:
+        print("Done.")
+    
     return None
 
 def calc_energy(densmap):
