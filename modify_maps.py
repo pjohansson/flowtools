@@ -2,6 +2,7 @@
 
 from util import parse_kwargs
 from read_data import read_system
+from numpy import inf
 
 BOLTZ = 8.6173E-5 # eV / K 
 
@@ -10,7 +11,7 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     using keywords 'cutw' and 'cuth' for width and height respectively. 
     Fields are given as a set."""
 
-    opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf], 'print' = True}
+    opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf], 'print' : True}
     parse_kwargs(opts, kwargs)
 
     if opts['print']:

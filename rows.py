@@ -7,7 +7,7 @@ def find_cells_in_row(row, flowmap, system):
     """Finds filled cells in a row from a flow map. Checks that cells are well
     connected."""
 
-    fields = {'X', 'U', 'V'}
+    fields = {'X', 'Y', 'U', 'V'}
     calc_row_y(row, system)
     reset_fields(row, fields)
 
@@ -38,7 +38,7 @@ def keep_droplet_cells_in_row(row, flowmap, system, above = True):
     Instead of the layer above, the one below can be controlled by giving
     the final input as above = False."""
 
-    fields = {'X', 'U', 'V'}
+    fields = {'X', 'Y', 'U', 'V'}
 
     if above:
         row_two = {'num' : row['num'] + 1}
@@ -79,7 +79,9 @@ def keep_droplet_cells_in_system(flowmap, system):
             keep_droplet_cells_in_row(row, flowmap, system, above = False)
         
         for field in fields:
-            keep[field].append(row[field])
+            if row['X'] != []:
+                for value in row[field]:
+                    keep[field].append(value)
 
     for field in fields:
         flowmap[field] = keep[field]
@@ -89,7 +91,6 @@ def keep_droplet_cells_in_system(flowmap, system):
 def find_row(height, system):
     """Returns the corresponding cell row of the system for a certain height."""
 
-    print(system)
     relative_position = height - system['initdisplacement'][1] - \
             system['celldimensions'][1]
     row = int(floor(relative_position / system['celldimensions'][1]))

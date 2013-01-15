@@ -1,7 +1,8 @@
 """Contains tools for main tasks on flow maps."""
 
 from util import construct_filename, parse_kwargs
-from datamaps import read_flowmap, cut_map
+from modify_maps import cut_map
+from read_data import read_flowmap
 from draw import draw_flowmap
 from pylab import figure
 from rows import keep_droplet_cells_in_system

@@ -30,7 +30,7 @@ def draw_flowmap(flowmap, system, **kwargs):
     """Draws a flow map as a quiver plot. Plot options can be supplied 
     using **kwargs."""
 
-    quiver(flowmap['X'], flowmap['Y'], flowmap['U'], flowmap['V'])
+    quiver(flowmap['X'], flowmap['Y'], flowmap['U'], flowmap['V'], **kwargs)
     axis('equal')
 
     return None

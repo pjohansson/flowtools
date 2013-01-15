@@ -1,4 +1,4 @@
-initdisplacement = 0.250072 0.25
-numcells = 691 256
-numcellstotal = 176896
 celldimensions = 0.5001450000000001 0.5
+numcellstotal = 176896
+numcells = 691 256
+initdisplacement = 0.250072 0.25
