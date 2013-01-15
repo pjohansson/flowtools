@@ -7,6 +7,7 @@ from draw import draw_flowmap, draw_energy
 from pylab import figure, hold, savefig, clf
 from rows import keep_droplet_cells_in_system
 from numpy import inf
+from spread import find_contact_line_spread, trim_empty_head, draw_spread_time
 
 def plot_flowmaps(system, frames, save_to = None, **kwargs):
     """Draws quiver plots of flow maps for specified frames. If no system
