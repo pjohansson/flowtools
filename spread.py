@@ -45,16 +45,16 @@ def find_contact_line_spread(contact_line, system, frames, **kwargs):
 
     reset_fields(contact_line, {'spread', 'frames'})
 
-    for system['frame'] in frames:
-        densmap['filename'], flowmap['filename'] = \
-                construct_filename(system, **kwargs)
+    for frame in frames:
+        flowmap['filename'] = construct_filename(system['flowbase'], 
+                frame, **kwargs)
         
         read_flowmap(flowmap)
         find_cells_in_row(row, flowmap, system)
         keep_droplet_cells_in_row(row, flowmap, system)
         find_edges_in_row(row, system)
 
-        contact_line['frames'].append(system['frame'])
+        contact_line['frames'].append(frame)
         if row['edges'] != []:
             contact_line['spread'].append(row['edges'][1] - row['edges'][0])
         else:
