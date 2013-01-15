@@ -4,7 +4,6 @@ from util import construct_filename, parse_kwargs, reset_fields
 from numpy import floor
 from pylab import plot, xlabel, ylabel, title
 from read_data import read_flowmap
-from rows import find_cells_in_row, keep_droplet_cells_in_row, find_edges_in_row
 
 def draw_spread_time(contact_line, system, **kwargs):
     """Draws a plot of a spreading droplet on a surface as a function of
