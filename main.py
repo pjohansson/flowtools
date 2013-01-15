@@ -75,4 +75,32 @@ def plot_energy_maps(system, frames, save_to = None, **kwargs):
         if save_to != None:
             savefig(save_to_frame)
 
+def plot_spread_vs_time(system, frames, **kwargs):
+    """Finds the spread of the contact line of a droplet and plots it for a 
+    list of frame numbers. If system['delta_t'] is specified for time between
+    every frame that is used as the x axis.
+    
+    A specific flow map filename structure can be specified using **kwargs
+    as for construct_filename. **kwargs can also be used to specify a row in
+    which the spreading is counted as row = 'num', to cut the flow map at
+    a height using cut = 'height' and to save the contact line information
+    into an external dictionary as line = contact_line.
+    
+    By default the time is measured after the first spreading is observed.
+    To draw the diagram for all input frames, input relative = False in
+    **kwargs array."""
+
+    opts = {'line' : {}, 'relative' : True}
+    parse_kwargs(opts, kwargs)
+
+    contact_line = opts['line']
+
+    find_contact_line_spread(contact_line, system, frames, **kwargs)
+
+    if opts['relative']:
+        trim_empty_head(contact_line, frames)
+
+    if 'delta_t' in system.keys():
+        draw_spread_time(contact_line, system)
+
     return None
