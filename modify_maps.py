@@ -6,6 +6,18 @@ from numpy import inf
 
 BOLTZ = 8.6173E-5 # eV / K 
 
+def calc_energy(densmap):
+    """Calculates the kinetic energy in cells from the temperature, stores
+    in dict with keyword 'E'."""
+
+    reset_fields(densmap, {'E'})
+
+    for temp, numatoms in zip(densmap['T'], densmap['N']):
+        energy = 2 * BOLTZ * numatoms * temp
+        densmap['E'].append(energy)
+
+    return None
+
 def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     """Cuts given fields for positions inside, specified by giving arrays
     using keywords 'cutw' and 'cuth' for width and height respectively. 
@@ -13,7 +25,6 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
 
     opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf], 'print' : True}
     parse_kwargs(opts, kwargs)
-    print(opts['cutw'], opts['cuth'])
 
     if opts['print']:
         print("Trying to cut fields ...", 
@@ -43,16 +54,4 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     if opts['print']:
         print("Done.")
     
-    return None
-
-def calc_energy(densmap):
-    """Calculates the kinetic energy in cells from the temperature, stores
-    in dict with keyword 'E'."""
-
-    reset_fields(densmap, {'E'})
-
-    for temp, numatoms in zip(densmap['T'], densmap['N']):
-        energy = 2 * BOLTZ * numatoms * temp
-        densmap['E'].append(energy)
-
     return None

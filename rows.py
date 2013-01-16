@@ -42,15 +42,18 @@ def keep_droplet_cells_in_row(row, flowmap, system, above = True):
 
     if above:
         row_two = {'num' : row['num'] + 1}
+        row_three = {'num' : row['num'] + 2}
     else:
         row_two = {'num' : row['num'] - 1}
+        row_three = {'num' : row['num'] - 2}
 
     find_cells_in_row(row_two, flowmap, system)
+    find_cells_in_row(row_three, flowmap, system)
 
     keep = {field : [] for field in fields}
 
     for i, pos_x in enumerate(row['X']):
-        if control_cell(pos_x, row_two, system):
+        if control_cell(pos_x, row_two, row_three, system):
             for field in fields:
                 keep[field].append(row[field][i])
 
@@ -97,25 +100,24 @@ def find_row(height, system):
 
     return row
 
-def control_cell(pos_x, row_two, system):
-    """Controls if a cell is well connected to a layer above it, that is
-    if the upper layer has at least two filled cells in direct connection 
-    to it, or if only one, if that cell is connected to another neighbour."""
+def control_cell(pos_x, row_two, row_three, system):
+    """Controls if a cell is well connected to two layer above it, that is
+    if if a link can be created between it and the layer."""
 
-    x_min = pos_x - 1.5 * system['celldimensions'][0]
-    x_max = pos_x + 1.5 * system['celldimensions'][0]
+    x_min_row_two = pos_x - 1.5 * system['celldimensions'][0]
+    x_max_row_two = pos_x + 1.5 * system['celldimensions'][0]
 
-    count = 0
-    for cell_two, pos_x_two in enumerate(row_two['X']):
-        if x_min < pos_x_two <= x_max:
-            count += 1
+    success = False
 
-    if count > 1:
-        success = True
-    elif count == 1:
-        success = True
-    else:
-        success = False
+    for cell_row_two, pos_x_row_two in enumerate(row_two['X']):
+
+        if x_min_row_two <= pos_x_row_two < x_max_row_two:
+            x_min_row_three = pos_x_row_two - 1.5 * system['celldimensions'][0]
+            x_max_row_three = pos_x_row_two + 1.5 * system['celldimensions'][0]
+
+            for cell_row_three, pos_x_row_three in enumerate(row_three['X']):
+                if x_min_row_three <= pos_x_row_three < x_max_row_three:
+                    success = True
 
     return success
 
