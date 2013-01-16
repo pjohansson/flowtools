@@ -43,9 +43,10 @@ def parse_kwargs(opts, kwargs):
     """Parses a kwargs array and sets any already in opts to 
     specified values."""
 
-    for arg in kwargs.keys():
-        if arg in opts.keys():
+    for arg in opts.keys():
+        if arg in kwargs.keys():
             opts[arg] = kwargs[arg]
+            del(kwargs[arg])
 
     return None
 

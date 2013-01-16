@@ -1,6 +1,6 @@
 """Tools for modifying data and flow maps."""
 
-from util import parse_kwargs
+from util import parse_kwargs, reset_fields
 from read_data import read_system
 from numpy import inf
 
@@ -13,6 +13,7 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
 
     opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf], 'print' : True}
     parse_kwargs(opts, kwargs)
+    print(opts['cutw'], opts['cuth'])
 
     if opts['print']:
         print("Trying to cut fields ...", 
@@ -47,6 +48,8 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
 def calc_energy(densmap):
     """Calculates the kinetic energy in cells from the temperature, stores
     in dict with keyword 'E'."""
+
+    reset_fields(densmap, {'E'})
 
     for temp, numatoms in zip(densmap['T'], densmap['N']):
         energy = 2 * BOLTZ * numatoms * temp
