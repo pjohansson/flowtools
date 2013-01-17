@@ -1,7 +1,7 @@
 from cut_system import cut_map
 from numpy import inf
 from pylab import axis, clf, colorbar, figure, hist2d, title, xlabel, ylabel, xlim, ylim
-from read_data import read_densmap
+from read_data import read_densmap, read_system
 from save_data import save_figure
 from util import construct_filename, parse_kwargs, reset_fields
 
@@ -11,23 +11,33 @@ def plot_density(system, frames, **kwargs):
     **kwargs.
 
     To output frame images to .png, **kwargs can be used to enter a base name 
-    with save_to and dpi setting with dpi."""
+    with save_to and dpi setting with dpi. To avoid clearing active figure
+    at start, supply clear = False."""
 
     densmap = {}
 
     opts = {'cutw' : [-inf, inf], 'cuth' : [-inf, inf], 
-            'save_to' : None, 'dpi' : 200}
+            'save_to' : None, 'dpi' : 200, 'clear' : True}
     parse_kwargs(opts, kwargs)
+
+    if opts['cutw'] != [-inf, inf] or opts['cuth'] != [-inf, inf]:
+        print("Cutting system outside x = %r and y = %r." 
+                % (opts['cutw'], opts['cuth']))
 
     find_normalising_factor(system, frames)
 
-    clf()
+    if opts['clear']:
+        clf()
 
     for frame in frames:
         densmap['filename'] = construct_filename(system['densbase'], frame)
-        read_densmap(densmap)
+        read_densmap(densmap, print = False)
 
-        cut_map(densmap, {'X', 'Y', 'N', 'T', 'M'}, system, **opts)
+        if opts['cutw'] != [-inf, inf] or opts['cuth'] != [-inf, inf]:
+            cut_map(densmap, {'X', 'Y', 'N', 'T', 'M'}, system, 
+                    print = False, **opts)
+            read_system(system, densmap, print = False)
+
         normalise_density(densmap, system)
         draw_density(densmap, system, **kwargs)
 
