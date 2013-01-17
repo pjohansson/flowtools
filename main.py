@@ -3,7 +3,7 @@
 from util import construct_filename, parse_kwargs
 from modify_maps import cut_map, calc_energy
 from read_data import read_densmap, read_flowmap
-from draw import draw_flowmap, draw_energy
+from draw import draw_flowmap, draw_energy, draw_temperature, draw_density, draw_mass
 from pylab import figure, hold, savefig, clf
 from rows import keep_droplet_cells_in_system
 from numpy import inf
@@ -62,19 +62,20 @@ def plot_energy_maps(system, frames, save_to = None, **kwargs):
 
         cut_map(densmap, {'X', 'Y', 'N', 'T', 'M'}, system, **opts)
 
-        calc_energy(densmap)
+        # calc_energy(densmap)
 
         if save_to == None:
-            figure()
+            pass
         else:
             clf()
             hold(False)
             save_to_frame = construct_filename(save_to, frame, ext = '.png')
 
-        draw_energy(densmap, system, **kwargs)
+        # draw_energy(densmap, system, **kwargs)
+        draw_density(densmap, system, **kwargs)
 
         if save_to != None:
-            savefig(save_to_frame)
+            savefig(save_to_frame, dpi = 150)
 
 def plot_spread_vs_time(system, frames, **kwargs):
     """Finds the spread of the contact line of a droplet and plots it for a 
@@ -91,7 +92,9 @@ def plot_spread_vs_time(system, frames, **kwargs):
     To draw the diagram for all input frames, input relative = False in
     **kwargs array."""
 
-    opts = {'line' : {}, 'relative' : True}
+    opts = {'line' : {}, 'relative' : True, 'delta_t' : 0}
+    if 'delta_t' in system.keys():
+        opts['delta_t'] = system['delta_t']
     parse_kwargs(opts, kwargs)
 
     contact_line = opts['line']
@@ -101,7 +104,9 @@ def plot_spread_vs_time(system, frames, **kwargs):
     if opts['relative']:
         trim_empty_head(contact_line, frames)
 
-    if 'delta_t' in system.keys():
-        draw_spread_time(contact_line, system)
+    if opts['delta_t'] > 0.0:
+        draw_spread_time(contact_line, opts['delta_t'])
+    else:
+        draw_spread_frames(contact_line)
 
     return None

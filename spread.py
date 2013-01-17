@@ -2,22 +2,34 @@
 
 from util import construct_filename, parse_kwargs, reset_fields
 from numpy import floor
-from pylab import plot, xlabel, ylabel, title
+from pylab import figure, plot, xlabel, ylabel, title
 from read_data import read_flowmap
-from rows import find_cells_in_row, keep_droplet_cells_in_row, find_edges_in_row
+from rows import find_cells_in_row, keep_droplet_cells_in_row, find_edges_in_row, find_row
 
-def draw_spread_time(contact_line, system, **kwargs):
+def draw_spread_time(contact_line, delta_t, **kwargs):
     """Draws a plot of a spreading droplet on a surface as a function of
     time. Plotting commands can be set using **kwargs."""
+
+    opts = {'legend' : False, 'hold' : None}
+    parse_kwargs(opts, kwargs)
 
     contact_line['times'] = []
     frame_null = contact_line['frames'][0]
     for i, frame in enumerate(contact_line['frames']):
-        contact_line['times'].append((frame - frame_null) * system['delta_t'])
+        contact_line['times'].append((frame - frame_null) * delta_t)
 
-    plot(contact_line['times'], contact_line['spread'])
+    plot(contact_line['times'], contact_line['spread'], **kwargs)
     xlabel('Time (ps)'); ylabel('Spread of contact line (nm)');
-    title('Spread of contact line of droplet on a quadrupole surface.')
+    title('Spread of contact line of droplet on a surface.')
+    
+    if opts['legend']:
+        legend()
+    if opts['hold'] == True:
+        hold(True)
+    elif opts['hold'] == False:
+        hold(False)
+
+    return None
 
 def find_contact_line_spread(contact_line, system, frames, **kwargs):
     """Finds the spread of a droplet as a function of time by reading flowmaps
@@ -37,9 +49,8 @@ def find_contact_line_spread(contact_line, system, frames, **kwargs):
     parse_kwargs(opts, kwargs)
 
     if opts['row'] == None:
-        row = int(floor((system['floor'] - system['initdisplacement'][1])
-                / system['celldimensions'][1]))
-        opts['row'] = row
+        opts['row'] = find_row(system['floor'], system)
+        print(opts['row'])
 
     row = {'num' : opts['row']}
 

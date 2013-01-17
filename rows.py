@@ -76,8 +76,8 @@ def keep_droplet_cells_in_system(flowmap, system):
     for row['num'] in range(row_min, row_max + 1):
         find_cells_in_row(row, flowmap, system)
 
-        if row['num'] < row_max:
-            keep_droplet_cells_in_row(row, flowmap, system)
+        if row['num'] < row_max - 1:
+            keep_droplet_cells_in_row(row, flowmap, system, above = True)
         else:
             keep_droplet_cells_in_row(row, flowmap, system, above = False)
         
@@ -94,9 +94,9 @@ def keep_droplet_cells_in_system(flowmap, system):
 def find_row(height, system):
     """Returns the corresponding cell row of the system for a certain height."""
 
-    relative_position = height - system['initdisplacement'][1] - \
-            system['celldimensions'][1]
-    row = int(floor(relative_position / system['celldimensions'][1]))
+    relative_position = height - ( system['initdisplacement'][1] - \
+            system['celldimensions'][1] / 2 )
+    row = int( floor(relative_position / system['celldimensions'][1]) )
 
     return row
 
