@@ -1,8 +1,7 @@
 """Tools for saving data and maps."""
 
-from modify_maps import cut_map
+from pylab import clf, figure
 from util import construct_filename
-from read_data import read_densmap, read_flowmap
 
 def save_data_to_file(system, saveto_filename):
     """Prints system data information to a text file."""
@@ -14,7 +13,8 @@ def save_data_to_file(system, saveto_filename):
         return None
 
     fields = {
-            'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
+            'numcellstotal', 'numcells', 'celldimensions', 
+            'initdisplacement', 'max_mass'
             }
 
     for field in fields:
@@ -70,6 +70,15 @@ def save_map_to_file(data_map, fields, save_to_filename):
 
     return None
 
+def save_figure(save_to_base, frame):
+    """Saves figure to filename from base and frame."""
+
+    save_to_filename = construct_filename(save_to, frame, ext = '.png')
+    savefig(save_to_filename, dpi = 150)
+    clf()
+
+    return None
+
 def create_line(i, data_map, fields):
     """Returns a line created in order from fields."""
 
@@ -102,24 +111,3 @@ def create_header(fields):
     header += '\n'
 
     return header
-
-def cut_system_for_frames(system, frames, save_to_densbase, save_to_flowbase, 
-        **kwargs):
-    """Cuts density and flow maps of a system for specified frames and outputs 
-    to specified bases. Cut arguments are given in **kwargs as for cut_map."""
-
-    densmap = {}; flowmap = {};
-
-    for frame in frames:
-        densmap['filename'] = construct_filename(system['densbase'], frame)
-        flowmap['filename'] = construct_filename(system['flowbase'], frame)
-        read_densmap(densmap)
-        read_flowmap(flowmap)
-
-        cut_map(densmap, {'X', 'Y', 'N', 'T', 'M'}, system, **kwargs)
-        cut_map(flowmap, {'X', 'Y', 'U', 'V'}, system, **kwargs)
-
-        save_to_dens = construct_filename(save_to_densbase, frame)
-        save_to_flow = construct_filename(save_to_flowbase, frame)
-        save_densmap(densmap, save_to_dens)
-        save_flowmap(flowmap, save_to_flow)

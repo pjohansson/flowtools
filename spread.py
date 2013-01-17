@@ -6,6 +6,40 @@ from pylab import figure, plot, xlabel, ylabel, title
 from read_data import read_flowmap
 from rows import find_cells_in_row, keep_droplet_cells_in_row, find_edges_in_row, find_row
 
+def plot_spread_vs_time(system, frames, **kwargs):
+    """Finds the spread of the contact line of a droplet and plots it for a 
+    list of frame numbers. If system['delta_t'] is specified for time between
+    every frame that is used as the x axis.
+    
+    A specific flow map filename structure can be specified using **kwargs
+    as for construct_filename. **kwargs can also be used to specify a row in
+    which the spreading is counted as row = 'num', to cut the flow map at
+    a height using cut = 'height' and to save the contact line information
+    into an external dictionary as line = contact_line.
+    
+    By default the time is measured after the first spreading is observed.
+    To draw the diagram for all input frames, input relative = False in
+    **kwargs array."""
+
+    opts = {'line' : {}, 'relative' : True, 'delta_t' : 0}
+    if 'delta_t' in system.keys():
+        opts['delta_t'] = system['delta_t']
+    parse_kwargs(opts, kwargs)
+
+    contact_line = opts['line']
+
+    find_contact_line_spread(contact_line, system, frames, **kwargs)
+
+    if opts['relative']:
+        trim_empty_head(contact_line, frames)
+
+    if opts['delta_t'] > 0.0:
+        draw_spread_time(contact_line, opts['delta_t'])
+    else:
+        draw_spread_frames(contact_line)
+
+    return None
+
 def draw_spread_time(contact_line, delta_t, **kwargs):
     """Draws a plot of a spreading droplet on a surface as a function of
     time. Plotting commands can be set using **kwargs."""

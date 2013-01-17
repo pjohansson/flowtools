@@ -26,8 +26,9 @@ def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
 
 def construct_filename(base, frame, **kwargs): 
     """Constructs filenames of data maps from given base and frame number. 
-    In **kwargs a separator can be set using 'sep', extension
-    using 'ext' and number of zeros 'numd'."""
+    In **kwargs a separator can be set using 'sep', extension using 'ext' 
+    and number of zeros 'numd'. These default to '_', '.dat' and '5' 
+    respectively."""
 
     opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
     parse_kwargs(opts, kwargs)
@@ -57,3 +58,4 @@ def reset_fields(data, fields_reset):
         data[field] = []
 
     return None
+

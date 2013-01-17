@@ -1,7 +1,7 @@
 """Tools for reading system from different files."""
 
 from save_data import save_data_to_file
-from util import reset_fields
+from util import parse_kwargs, reset_fields
 
 def read_system(system, densmap = {}, saveto_filename = ''):
     """If a precalculated data file is supplied in the system dictionary as
@@ -28,8 +28,11 @@ def read_system(system, densmap = {}, saveto_filename = ''):
 
     return None
 
-def read_densmap(densmap_data):
+def read_densmap(densmap_data, **kwargs):
     """Reads a density map and stores values in dictionary."""
+
+    opts = {'print' : True}
+    parse_kwargs(opts, kwargs)
 
     try:
         densmap = open(densmap_data['filename'])
@@ -45,8 +48,9 @@ def read_densmap(densmap_data):
     header = densmap.readline().strip().upper().split()
 
     if header == fields:
-        print("Reading density map '%s' ..." 
-                % densmap_data['filename'], end = ' ', flush = True)
+        if opts['print']:
+            print("Reading density map '%s' ..." 
+                    % densmap_data['filename'], end = ' ', flush = True)
 
         line = densmap.readline().strip()
         while (line != ''):
@@ -62,7 +66,8 @@ def read_densmap(densmap_data):
         for i, value in enumerate(densmap_data['N']):
             densmap_data['N'][i] = int(value)
 
-        print("Done.")
+        if opts['print']:
+            print("Done.")
         densmap_data['read'] = True
 
     else:
@@ -73,7 +78,7 @@ def read_densmap(densmap_data):
 
     return None
 
-def read_flowmap(flowmap_data):
+def read_flowmap(flowmap_data, noprint = False):
     """Reads a flow map and stores values in dictionary."""
 
     try:
@@ -90,8 +95,9 @@ def read_flowmap(flowmap_data):
     header = flowmap.readline().strip().upper().split()
 
     if header == fields:
-        print("Reading flow map '%s' ..." 
-                % flowmap_data['filename'], end = ' ', flush = True)
+        if not noprint:
+            print("Reading flow map '%s' ..." 
+                    % flowmap_data['filename'], end = ' ', flush = True)
 
         line = flowmap.readline().strip()
         while (line != ''):
@@ -103,7 +109,8 @@ def read_flowmap(flowmap_data):
 
             line = flowmap.readline().strip()
 
-        print("Done.")
+        if not noprint:
+            print("Done.")
         flowmap_data['read'] = True
 
 
@@ -159,15 +166,19 @@ def read_data_from_file(system):
     data_list = {
             'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
             }
+    opt_list = {'max_mass'}
 
     line = datafile.readline().strip()
     while (line != ''):
         data, sign, *values = line.split()
 
-        if data in data_list:
+        if data in data_list or opt_list:
             system[data] = []
-            for var in values:
-                system[data].append(float(var))
+            if len(values) == 1:
+                system[data] = float(values[0])
+            else:
+                for var in values:
+                    system[data].append(float(var))
 
         line = datafile.readline().strip()
 
@@ -175,7 +186,7 @@ def read_data_from_file(system):
 
     # Check if fully read
     if data_list <= system.keys():
-        system['numcellstotal'][0] = int(system['numcellstotal'][0])
+        system['numcellstotal'] = int(system['numcellstotal'])
         system['numcells'][0] = int(system['numcells'][0])
         system['numcells'][1] = int(system['numcells'][1])
 
