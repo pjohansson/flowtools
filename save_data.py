@@ -1,6 +1,6 @@
 """Tools for saving data and maps."""
 
-from pylab import clf, figure
+from pylab import clf, figure, savefig
 from util import construct_filename
 
 def save_data_to_file(system, saveto_filename):
@@ -70,11 +70,11 @@ def save_map_to_file(data_map, fields, save_to_filename):
 
     return None
 
-def save_figure(save_to_base, frame):
+def save_figure(save_to_base, frame, dpi_input = 200):
     """Saves figure to filename from base and frame."""
 
-    save_to_filename = construct_filename(save_to, frame, ext = '.png')
-    savefig(save_to_filename, dpi = 150)
+    save_to_filename = construct_filename(save_to_base, frame, ext = '.png')
+    savefig(save_to_filename, dpi = dpi_input)
     clf()
 
     return None

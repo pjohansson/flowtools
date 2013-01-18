@@ -3,7 +3,7 @@
 from save_data import save_data_to_file
 from util import parse_kwargs, reset_fields
 
-def read_system(system, densmap = {}, saveto_filename = ''):
+def read_system(system, densmap = {}, saveto_filename = '', **kwargs):
     """If a precalculated data file is supplied in the system dictionary as
     system['datafile'], reads and stores total number of cells, as well as 
     for each direction the number of cells, cell dimensions, and system 
@@ -13,18 +13,22 @@ def read_system(system, densmap = {}, saveto_filename = ''):
     optional second argument. This data can be further saved by supplying
     a location of a file to store it in as a third argument."""
 
+    opts = {'print' : True}
+    parse_kwargs(opts, kwargs)
+
     if densmap == {}:
-        print("Reading data file '%s' ..." % system['datafile'] , end = ' ') 
+        if opts['print']:
+            print("Reading data file '%s' ..." % system['datafile'] , end = ' ')
         success = read_data_from_file(system)
-        if success:
+        if success and opts['print']:
             print("Done.")
         else:
             print("Could not read file.")
 
     else:
-        success = read_data_from_densmap(system, densmap)
+        success = read_data_from_densmap(system, densmap, opts['print'])
         if success and saveto_filename != '':
-            save_data_to_file(system, saveto_filename)
+            save_data_to_file(system, saveto_filename, opts['print'])
 
     return None
 
@@ -125,10 +129,11 @@ def read_flowmap(flowmap_data, **kwargs):
 
     return None
 
-def read_data_from_densmap(system, densmap):
+def read_data_from_densmap(system, densmap, print_inp = True):
     """Reads system data into dictionary from density map."""
 
-    print("Reading density map data ...", end = ' ', flush = True)
+    if print_inp:
+        print("Reading density map data ...", end = ' ', flush = True)
     
     if not ({'X', 'Y'} < densmap.keys()):
         print("Density map is not read yet.")
@@ -152,7 +157,8 @@ def read_data_from_densmap(system, densmap):
     system['celldimensions'] = [cell_dimensions_x, cell_dimensions_y]
     system['initdisplacement'] = [densmap['X'][0], densmap['Y'][0]]
 
-    print("Done.")
+    if print_inp:
+        print("Done.")
 
     return True
 
