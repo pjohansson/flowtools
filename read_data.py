@@ -28,7 +28,7 @@ def read_system(system, densmap = {}, saveto_filename = '', **kwargs):
     else:
         success = read_data_from_densmap(system, densmap, opts['print'])
         if success and saveto_filename != '':
-            save_data_to_file(system, saveto_filename, opts['print'])
+            save_data_to_file(system, saveto_filename)
 
     return None
 

@@ -29,7 +29,7 @@ def plot_density(system, frames, **kwargs):
     if opts['clear']:
         plt.clf()
 
-    for frame in frames:
+    for i, frame in enumerate(frames):
         densmap['filename'] = construct_filename(system['densbase'], frame)
         read_densmap(densmap, print = False)
 
@@ -42,7 +42,8 @@ def plot_density(system, frames, **kwargs):
         draw_density(densmap, system, **kwargs)
 
         if opts['save_to'] != None:
-            print("\rFrame %d of %d ..." % (frame, frames[-1]), end = ' ')
+            print("\rFrame %d (%d of %d) ..." % (frame, i + 1, len(frames)), 
+                end = ' ')
             save_figure(opts['save_to'], frame, opts['dpi'])
         elif frame < frames[-1]:
             plt.figure()
@@ -61,12 +62,19 @@ def find_normalising_factor(system, frames):
     if 'max_mass' in system.keys() and system['max_mass'] > 0.0:
         return None
 
+    print("Finding normalising factor.")
+
     system['max_mass'] = 0.0
 
-    for frame in frames:
+    for i, frame in enumerate(frames):
+        print("Reading frame %d (%d of %d) ..." % (frame, i + 1, len(frames)),
+                end = ' ')
         densmap['filename'] = construct_filename(system['densbase'], frame)
         read_densmap(densmap, print = False)
         system['max_mass'] = max(system['max_mass'], max(densmap['M']))
+        print(system['max_mass'])
+
+    print("Done.")
 
     return None
 

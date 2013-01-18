@@ -3,7 +3,7 @@
 from pylab import clf, figure, savefig
 from util import construct_filename
 
-def save_data_to_file(system, saveto_filename):
+def save_data_to_file(system, saveto_filename, **kwargs):
     """Prints system data information to a text file."""
 
     try:
@@ -18,18 +18,19 @@ def save_data_to_file(system, saveto_filename):
             }
 
     for field in fields:
-        line = field + ' ='
+        if field in system.keys():
+            line = field + ' ='
 
-        if type(system[field]) == list:
-            for value in system[field]:
-                line += ' %s' % value
-        else:
-            line += ' %s' % system[field]
+            if type(system[field]) == list:
+                for value in system[field]:
+                    line += ' %s' % value
+            else:
+                line += ' %s' % system[field]
 
-        line.strip()
-        line += '\n'
+            line.strip()
+            line += '\n'
 
-        saveto.write(line)
+            saveto.write(line)
     saveto.close()
 
     return None
