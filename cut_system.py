@@ -21,13 +21,11 @@ def cut_system_for_frames(system, frames, save_to_folder, **kwargs):
     save_to_densbase = save_to_folder + densbase_strip + opts['suffix']
     save_to_flowbase = save_to_folder + flowbase_strip + opts['suffix']
 
-    print("Cutting system outside x = %r and y = %r." 
-            % (opts['cutw'], opts['cuth']))
-    print("%s -> %s", (system['densbase'], save_to_densbase))
-    print("%s -> %s", (system['flowbase'], save_to_flowbase))
+    print("%s -> %s" % (system['densbase'], save_to_densbase))
+    print("%s -> %s" % (system['flowbase'], save_to_flowbase))
 
-    for frame in frames:
-        print("\rFrame %d of %d ..." % (frame, frames[-1]), end = ' ')
+    for i, frame in enumerate(frames):
+        print("\rFrame %d of %d ..." % (i + 1, len(frames)), end = ' ')
         densmap['filename'] = construct_filename(system['densbase'], frame)
         flowmap['filename'] = construct_filename(system['flowbase'], frame)
         read_densmap(densmap, print = False)
@@ -42,6 +40,8 @@ def cut_system_for_frames(system, frames, save_to_folder, **kwargs):
         save_to_flow = construct_filename(save_to_flowbase, frame)
         save_densmap(densmap, save_to_dens)
         save_flowmap(flowmap, save_to_flow)
+
+    print("Done.")
 
     return None
 
