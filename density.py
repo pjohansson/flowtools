@@ -1,9 +1,9 @@
 from cut_system import cut_map
 from numpy import inf
-from pylab import axis, clf, colorbar, figure, hist2d, title, xlabel, ylabel, xlim, ylim
 from read_data import read_densmap, read_system
 from save_data import save_figure
 from util import construct_filename, parse_kwargs, reset_fields
+import pylab as plt
 
 def plot_density(system, frames, **kwargs):
     """Calls relevant functions to draw energy maps of supplied density maps.
@@ -27,7 +27,7 @@ def plot_density(system, frames, **kwargs):
     find_normalising_factor(system, frames)
 
     if opts['clear']:
-        clf()
+        plt.clf()
 
     for frame in frames:
         densmap['filename'] = construct_filename(system['densbase'], frame)
@@ -42,9 +42,12 @@ def plot_density(system, frames, **kwargs):
         draw_density(densmap, system, **kwargs)
 
         if opts['save_to'] != None:
+            print("\rFrame %d of %d ..." % (frame, frames[-1]), end = ' ')
             save_figure(opts['save_to'], frame, opts['dpi'])
         elif frame < frames[-1]:
-            figure()
+            plt.figure()
+
+    print("Done.")
 
     return None
 
@@ -95,16 +98,16 @@ def draw_density(densmap, system, **kwargs):
     opts['mmin'] /= system['max_mass']
     opts['mmax'] /= system['max_mass']
 
-    hist2d(densmap['X'], densmap['Y'], weights = densmap['dens_norm'], 
+    plt.hist2d(densmap['X'], densmap['Y'], weights = densmap['dens_norm'], 
             bins = system['numcells'], vmin = opts['vmin'], vmax = opts['vmax'],
             cmin = opts['mmin'], cmax = opts['mmax'], **kwargs)
-    axis('scaled');
+    plt.axis('scaled');
 
-    title('Density of droplet on substrate.')
-    xlabel('Position (nm)')
-    ylabel('Height (nm)')
+    plt.title('Density of droplet on substrate.')
+    plt.xlabel('Position (nm)')
+    plt.ylabel('Height (nm)')
     
     if opts['colormap']:
-        colorbar()
+        plt.colorbar()
 
     return None
