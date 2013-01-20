@@ -96,7 +96,7 @@ def correct_flowmap(flowmap, flowmap_prev, densmap, densmap_prev,
 
 def fill_flowmap(flowmap, densmap):
     """Fills empty cells in flowmap by comparison with densmap. Flow set to 
-    zero in new cells."""
+    zero in new cells. New map is returned."""
 
     fields = {'X', 'Y', 'U', 'V'}
     values = {field : 0 for field in fields}

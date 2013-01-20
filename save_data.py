@@ -34,6 +34,14 @@ def save_data_to_file(system, saveto_filename):
 
     return None
 
+def save_datamap(datamap, save_to_filename):
+    """Saves a full data map to a file."""
+
+    fields = ['X', 'Y', 'N', 'T', 'M', 'U', 'V']
+    save_map_to_file(datamap, fields, save_to_filename)
+
+    return None
+
 def save_densmap(densmap, save_to_filename):
     """Saves a density map to a file."""
 
