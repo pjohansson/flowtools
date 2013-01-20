@@ -82,8 +82,11 @@ def read_densmap(densmap_data, **kwargs):
 
     return None
 
-def read_flowmap(flowmap_data, noprint = False):
+def read_flowmap(flowmap_data, **kwargs):
     """Reads a flow map and stores values in dictionary."""
+
+    opts = {'print' : True}
+    parse_kwargs(opts, kwargs)
 
     try:
         flowmap = open(flowmap_data['filename'])
@@ -99,7 +102,7 @@ def read_flowmap(flowmap_data, noprint = False):
     header = flowmap.readline().strip().upper().split()
 
     if header == fields:
-        if not noprint:
+        if opts['print']:
             print("Reading flow map '%s' ..." 
                     % flowmap_data['filename'], end = ' ', flush = True)
 
@@ -113,7 +116,7 @@ def read_flowmap(flowmap_data, noprint = False):
 
             line = flowmap.readline().strip()
 
-        if not noprint:
+        if opts['print']:
             print("Done.")
         flowmap_data['read'] = True
 

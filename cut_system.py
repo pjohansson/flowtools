@@ -15,22 +15,33 @@ def cut_system_for_frames(system, frames, save_to_folder, **kwargs):
     parse_kwargs(opts, kwargs)
 
     densmap = {}; flowmap = {};
-    save_to_densbase = save_to_folder + system['densbase'] + opts['suffix']
-    save_to_flowbase = save_to_folder + system['flowbase'] + opts['suffix']
 
-    for frame in frames:
+    densbase_strip = system['densbase'].rsplit('/', maxsplit = 1)[-1]
+    flowbase_strip = system['flowbase'].rsplit('/', maxsplit = 1)[-1]
+    save_to_densbase = save_to_folder + densbase_strip + opts['suffix']
+    save_to_flowbase = save_to_folder + flowbase_strip + opts['suffix']
+
+    print("%s -> %s" % (system['densbase'], save_to_densbase))
+    print("%s -> %s" % (system['flowbase'], save_to_flowbase))
+
+    for i, frame in enumerate(frames):
+        print("\rFrame %d of %d ..." % (i + 1, len(frames)), end = ' ')
         densmap['filename'] = construct_filename(system['densbase'], frame)
         flowmap['filename'] = construct_filename(system['flowbase'], frame)
-        read_densmap(densmap)
-        read_flowmap(flowmap)
+        read_densmap(densmap, print = False)
+        read_flowmap(flowmap, print = False)
 
-        cut_map(densmap, {'X', 'Y', 'N', 'T', 'M'}, system, print = False)
-        cut_map(flowmap, {'X', 'Y', 'U', 'V'}, system, print = False)
+        cut_map(densmap, {'X', 'Y', 'N', 'T', 'M'}, system, 
+                print = False, **kwargs)
+        cut_map(flowmap, {'X', 'Y', 'U', 'V'}, system, 
+                print = False, **kwargs)
 
         save_to_dens = construct_filename(save_to_densbase, frame)
         save_to_flow = construct_filename(save_to_flowbase, frame)
         save_densmap(densmap, save_to_dens)
         save_flowmap(flowmap, save_to_flow)
+
+    print("Done.")
 
     return None
 
