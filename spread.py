@@ -1,8 +1,8 @@
 """Module containing tool to plot spreading as a function of time."""
 
 from util import construct_filename, parse_kwargs, reset_fields
-from pylab import figure, plot, xlabel, ylabel, title
-from read_data import read_flowmap
+from pylab import figure, plot, xlabel, ylabel, title, hold
+from read_data import read_flowmap, read_datamap
 from rows import find_cells_in_row, keep_droplet_cells_in_row, find_edges_in_row, find_row
 import numpy as np
 
@@ -44,7 +44,8 @@ def draw_spread_time(contact_line, delta_t, **kwargs):
     """Draws a plot of a spreading droplet on a surface as a function of
     time. Plotting commands can be set using **kwargs."""
 
-    opts = {'legend' : False, 'hold' : None}
+    opts = {'label' : '_nolegend_', 'legend' : False, 'hold' : None, 
+            'color' : 'blue'}
     parse_kwargs(opts, kwargs)
 
     contact_line['times'] = []
@@ -52,20 +53,23 @@ def draw_spread_time(contact_line, delta_t, **kwargs):
     for i, frame in enumerate(contact_line['frames']):
         contact_line['times'].append((frame - frame_null) * delta_t)
 
-    plot(contact_line['times'], contact_line['spread'], **kwargs)
+    spread_left = []
+    spread_right = []
+    for edges in contact_line['spread']:
+        spread_left.append(edges[0])
+        spread_right.append(edges[1])
+
+    hold(True)
+    plot(contact_line['times'], spread_left, opts['color'],
+            label=opts['label'], **kwargs)
+    plot(contact_line['times'], spread_right, opts['color'],
+            label='_nolegend_', **kwargs)
     xlabel('Time (ps)'); ylabel('Spread of contact line (nm)');
     title('Spread of contact line of droplet on a surface.')
     
-    if opts['legend']:
-        legend()
-    if opts['hold'] == True:
-        hold(True)
-    elif opts['hold'] == False:
-        hold(False)
-
     return None
 
-def find_contact_line_spread(contact_line, system, frames, **kwargs):
+def find_contact_line_spread(system, frames, **kwargs):
     """Finds the spread of a droplet as a function of time by reading flowmaps
     for a list of frame number frames and finding the edges of the droplet in 
     the row directly above the floor, specified in system['floor']. Saves the 
@@ -75,32 +79,50 @@ def find_contact_line_spread(contact_line, system, frames, **kwargs):
     supplied in **kwargs as for construct_filename. A specific row in which
     the floor begins can be specified in **kwargs using row = 'num', otherwise
     it will be calculated using settings for system['initdisplacement'],
-    system['celldimensions'] and system['floor']."""
+    system['celldimensions'] and system['floor'].
+    
+    The finished contact line can be input and thus save by using the **kwargs
+    contact_line."""
 
-    densmap = {}; flowmap = {};
+    datamap = {}
+    fields_flow = {'X', 'Y', 'U', 'V'}
 
-    opts = {'row' : None}
+    opts = {'row' : None, 'contact_line' : {}, 'base' : None}
     parse_kwargs(opts, kwargs)
 
     if opts['row'] == None:
         opts['row'] = find_row(system['floor'], system)
-        print(opts['row'])
 
     row = {'num' : opts['row']}
 
-    reset_fields(contact_line, {'spread', 'frames'})
+    reset_fields(opts['contact_line'], {'spread', 'frames'})
 
     for frame in frames:
-        flowmap['filename'] = construct_filename(system['flowbase'], 
-                frame, **kwargs)
+        data_filename = construct_filename(system['database'], frame, **kwargs)
         
-        read_flowmap(flowmap)
-        find_cells_in_row(row, flowmap, system)
-        keep_droplet_cells_in_row(row, flowmap, system)
+        read_datamap(datamap, fields = fields_flow, 
+                filename = data_filename, print = False)
+        remove_empty_cells(datamap, fields_flow)
+        find_cells_in_row(row, datamap, system)
+        keep_droplet_cells_in_row(row, datamap, system)
         find_edges_in_row(row, system)
 
-        contact_line['frames'].append(frame)
-        contact_line['spread'].append(row['edges'])
+        opts['contact_line']['frames'].append(frame)
+        opts['contact_line']['spread'].append(row['edges'])
+
+    find_impact_position(contact_line, frames)
+    adjust_contact_line_spread(contact_line)
+
+    return None
+
+def adjust_contact_line_spread(contact_line):
+    """Adjusts the contact line to show the distance from middle point of 
+    impact instead of absolute positions of contact line edges."""
+
+    for i, edges in enumerate(contact_line['spread']):
+        for j, pos in enumerate(edges):
+            edges[j] = pos - contact_line['impact_pos']
+        contact_line['spread'][i] = edges
 
     return None
 
@@ -109,10 +131,24 @@ def find_impact_position(contact_line, frames):
     contact line array."""
 
     for edges, frame in zip(contact_line['spread'], frames):
-        if spread != []:
+        if edges != []:
             contact_line['impact_frame'] = frame
             contact_line['impact_pos'] = np.mean(edges)
             break
+
+    return None
+
+def remove_empty_cells(datamap, fields = set()):
+    """Removes cells which have no flow from a data map. Specify fields
+    to remove as a set in the second argument."""
+
+    i = 0
+    while i < len(datamap['U']):
+        if datamap['U'][i] == 0.0 and datamap['V'][i] == 0.0:
+            for field in fields:
+                del(datamap[field][i])
+        else:
+            i += 1
 
     return None
 
@@ -121,7 +157,7 @@ def trim_empty_head(contact_line, frames):
     and trims frames to fit from back. The remainder is a contact_line with
     values starting from first impact and frames counting from that point."""
 
-    while contact_line['spread'] != [] and contact_line['spread'][0] == 0:
+    while contact_line['spread'][0] == []:
         del(contact_line['spread'][0])
         del(contact_line['frames'][-1])
 
