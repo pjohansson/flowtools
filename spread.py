@@ -1,10 +1,10 @@
 """Module containing tool to plot spreading as a function of time."""
 
 from util import construct_filename, parse_kwargs, reset_fields
-from numpy import floor
 from pylab import figure, plot, xlabel, ylabel, title
 from read_data import read_flowmap
 from rows import find_cells_in_row, keep_droplet_cells_in_row, find_edges_in_row, find_row
+import numpy as np
 
 def plot_spread_vs_time(system, frames, **kwargs):
     """Finds the spread of the contact line of a droplet and plots it for a 
@@ -100,10 +100,19 @@ def find_contact_line_spread(contact_line, system, frames, **kwargs):
         find_edges_in_row(row, system)
 
         contact_line['frames'].append(frame)
-        if row['edges'] != []:
-            contact_line['spread'].append(row['edges'][1] - row['edges'][0])
-        else:
-            contact_line['spread'].append(0)
+        contact_line['spread'].append(row['edges'])
+
+    return None
+
+def find_impact_position(contact_line, frames):
+    """Finds the middle position of the first impact given a fully read 
+    contact line array."""
+
+    for edges, frame in zip(contact_line['spread'], frames):
+        if spread != []:
+            contact_line['impact_frame'] = frame
+            contact_line['impact_pos'] = np.mean(edges)
+            break
 
     return None
 
