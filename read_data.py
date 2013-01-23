@@ -22,7 +22,7 @@ def read_system(system, **kwargs):
     elif opts['from_datafile'] != None:
         datamap = {}
         read_datamap(datamap, filename = opts['from_datafile'], 
-            fields = {'X', 'Y'})
+            fields = {'X', 'Y'}, print = opts['print'])
         read_data_from_datamap(system, datamap, opts['print'])
 
     else:
