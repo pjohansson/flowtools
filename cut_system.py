@@ -67,7 +67,7 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
                 keep[field].append(map_to_cut[field][i])
 
     for field in (fields_to_cut):
-        map_to_cut[field] = keep[field]
+        map_to_cut[field] = keep[field].copy()
 
     if opts['print']:
         print("Done.")
