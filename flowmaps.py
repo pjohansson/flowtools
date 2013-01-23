@@ -1,9 +1,8 @@
 from cut_system import cut_map
 from read_data import read_datamap, read_system
 from save_data import save_figure
-from spread import remove_empty_cells
 from rows import keep_droplet_cells_in_system
-from util import construct_filename, parse_kwargs
+from util import construct_filename, parse_kwargs, remove_empty_cells
 
 import numpy as np
 import pylab as plt

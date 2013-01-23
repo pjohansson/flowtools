@@ -138,21 +138,6 @@ def find_impact_position(contact_line, frames):
 
     return None
 
-def remove_empty_cells(datamap, fields = set()):
-    """Removes cells which have no flow from a data map. Specify fields
-    to remove as a set in the second argument."""
-
-    i = 0
-    while i < len(datamap['U']):
-        if datamap['U'][i] == 0.0 and datamap['V'][i] == 0.0 \
-                and datamap['M'][i] < 30:
-            for field in fields:
-                del(datamap[field][i])
-        else:
-            i += 1
-
-    return None
-
 def trim_empty_head(contact_line, frames):
     """Removes empty entries in contact_line up until the first non-empty
     and trims frames to fit from back. The remainder is a contact_line with

@@ -125,7 +125,8 @@ def calc_row_y(row, system):
     """Calculates the minimum, maximum and center position in y for a 
     given cell row."""
 
-    row['y_min'] = system['initdisplacement'][1] + system['celldimensions'][1] * (row['num'] - 0.5)
+    row['y_min'] = system['initdisplacement'][1] + \
+            system['celldimensions'][1] * (row['num'] - 0.5)
     row['y_max'] = row['y_min'] + system['celldimensions'][1]
     row['Y'] = row['y_min'] + system['celldimensions'][1] / 2
 
