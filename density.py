@@ -5,7 +5,7 @@ from util import construct_filename, parse_kwargs, reset_fields
 import numpy as np
 import pylab as plt
 
-def plot_density(system, frames, **kwargs):
+def plot_density(frames, **kwargs):
     """Calls relevant functions to draw energy maps of supplied density maps.
     Options for cut_map and draw_density can be supplied as usual through 
     **kwargs. A base name different from that in system through base.
@@ -18,16 +18,22 @@ def plot_density(system, frames, **kwargs):
 
     opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
             'save_to' : None, 'dpi' : 200, 'clear' : True,
-            'base' : None}
+            'base' : None, system : {}}
     parse_kwargs(opts, kwargs)
+
+    # Set system
+    system = opts['system']
 
     # Find input base filename
     if opts['base'] != None:
         base_filename = opts['base']
-    elif 'database' in system:
+    else if 'database' in system:
         base_filename = system['database']
-    else:
-        base_filename = system['densbase']
+
+    # If no good system information, fill in
+    if {'numcells'}.issuperset(system.keys()):
+        init_filename = construct_filename(base_filename, frames[0])
+        read_system(system, from_datafile = init_filename, print = False)
 
     # Alert if cutting
     if opts['cutw'] != [-np.inf, np.inf] or \

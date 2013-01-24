@@ -1,20 +1,24 @@
 """Module containing tools for rows in data maps."""
 
-from util import reset_fields
+from util import parse_kwargs, reset_fields
 from numpy import floor
 
-def find_cells_in_row(row, flowmap, system):
+def find_cells_in_row(row, datamap, system, **kwargs):
     """Finds filled cells in a row from a flow map. Checks that cells are well
     connected."""
 
-    fields = {'X', 'Y', 'U', 'V'}
+    opts = {'fields' : {'X', 'Y', 'U', 'V'}}
+    parse_kwargs(opts, kwargs)
+
+    fields = opts['fields']
+
     calc_row_y(row, system)
     reset_fields(row, fields)
 
-    for i, pos_y in enumerate(flowmap['Y']):
+    for i, pos_y in enumerate(datamap['Y']):
         if row['y_min'] < pos_y <= row['y_max']:
             for field in fields:
-                row[field].append(flowmap[field][i])
+                row[field].append(datamap[field][i])
 
     return None
 
@@ -31,24 +35,27 @@ def find_edges_in_row(row, system):
 
     return None
 
-def keep_droplet_cells_in_row(row, flowmap, system, above = True):
+def keep_droplet_cells_in_row(row, flowmap, system, **kwargs):
     """Goes through all cells in a row and controls if it is well connected 
     to a layer above it. If not it is discarded.
     
     Instead of the layer above, the one below can be controlled by giving
     the final input as above = False."""
 
-    fields = {'X', 'Y', 'U', 'V'}
+    opts = {'above' : True, 'fields' : {'X', 'Y', 'U', 'V'}}
+    parse_kwargs(opts, kwargs)
 
-    if above:
+    fields = opts['fields']
+
+    if opts['above']:
         row_two = {'num' : row['num'] + 1}
         row_three = {'num' : row['num'] + 2}
     else:
         row_two = {'num' : row['num'] - 1}
         row_three = {'num' : row['num'] - 2}
 
-    find_cells_in_row(row_two, flowmap, system)
-    find_cells_in_row(row_three, flowmap, system)
+    find_cells_in_row(row_two, flowmap, system, fields = fields)
+    find_cells_in_row(row_three, flowmap, system, fields = fields)
 
     keep = {field : [] for field in fields}
 
@@ -62,11 +69,11 @@ def keep_droplet_cells_in_row(row, flowmap, system, above = True):
 
     return None
 
-def keep_droplet_cells_in_system(flowmap, system):
+def keep_droplet_cells_in_system(flowmap, system, 
+        fields = {'X', 'Y', 'U', 'V'}):
     """Remove all cells not part of droplet from flowmap."""
 
     row = {}
-    fields = {'X', 'Y', 'U', 'V'}
 
     row_min = find_row(min(flowmap['Y']), system)
     row_max = find_row(max(flowmap['Y']), system)
@@ -74,12 +81,14 @@ def keep_droplet_cells_in_system(flowmap, system):
     keep = {field : [] for field in fields}
 
     for row['num'] in range(row_min, row_max + 1):
-        find_cells_in_row(row, flowmap, system)
+        find_cells_in_row(row, flowmap, system, fields = fields)
 
         if row['num'] < row_max - 1:
-            keep_droplet_cells_in_row(row, flowmap, system, above = True)
+            keep_droplet_cells_in_row(row, flowmap, system, above = True,
+                    fields = fields)
         else:
-            keep_droplet_cells_in_row(row, flowmap, system, above = False)
+            keep_droplet_cells_in_row(row, flowmap, system, above = False,
+                    fields = fields)
         
         for field in fields:
             if row['X'] != []:
