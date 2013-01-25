@@ -1,161 +1,150 @@
 """Tools for reading system from different files."""
 
-from save_data import save_data_to_file
 from util import parse_kwargs, reset_fields
 
-def read_system(system, densmap = {}, saveto_filename = '', **kwargs):
+def read_system(system, **kwargs):
     """If a precalculated data file is supplied in the system dictionary as
     system['datafile'], reads and stores total number of cells, as well as 
     for each direction the number of cells, cell dimensions, and system 
     displacement, in the same dictionary.
 
-    The function can also read this data from a density map, given as an
-    optional second argument. This data can be further saved by supplying
-    a location of a file to store it in as a third argument."""
+    By giving a datamap using from_datamap as a **kwargs the system reads 
+    from the map instead of from a aggregated file. Additionally the **kwargs 
+    from_datafile can be filled with a which to calculate the data from, 
+    by way of an ordinary data map reading."""
 
-    opts = {'print' : True}
+    opts = {'print' : True, 'from_datamap' : None, 'from_datafile' : None}
     parse_kwargs(opts, kwargs)
 
-    if densmap == {}:
-        if opts['print']:
-            print("Reading data file '%s' ..." % system['datafile'] , end = ' ')
-        success = read_data_from_file(system)
-        if success and opts['print']:
-            print("Done.")
-        else:
-            print("Could not read file.")
+    if opts['from_datamap'] != None:
+        read_data_from_datamap(system, opts['from_datamap'], opts['print'])
+
+    elif opts['from_datafile'] != None:
+        datamap = {}
+        read_datamap(datamap, filename = opts['from_datafile'], 
+            fields = {'X', 'Y'}, print = opts['print'])
+        read_data_from_datamap(system, datamap, opts['print'])
 
     else:
-        success = read_data_from_densmap(system, densmap, opts['print'])
-        if success and saveto_filename != '':
-            save_data_to_file(system, saveto_filename)
+        read_data_from_file(system)
 
     return None
 
-def read_densmap(densmap_data, **kwargs):
+def read_datamap(datamap, **kwargs):
+    """Reads a data map datamap['filename'] and stores values in dictionary. 
+    By default reads a full data map, ordinary density or flow maps can be 
+    read by inputting type = 'density' or 'flow' as a **kwargs. If full control 
+    over read fields is wanted, a set can be input using fields = set() in the 
+    same way. This always takes precedense. A different filename can be 
+    similarly specified using filename as a **kwargs."""
+
+    opts = {'print' : True, 'type' : 'full', 'fields' : None, 'filename' : None}
+    parse_kwargs(opts, kwargs)
+
+    fields = set()
+    if opts['fields'] != None:
+        for field in opts['fields']:
+            fields.add(field)
+    elif opts['type'].lower() == 'full':
+        fields = {'X', 'Y', 'N', 'T', 'M', 'U', 'V'}
+    elif opts['type'].lower() == 'density':
+        fields = {'X', 'Y', 'N', 'T', 'M'}
+    elif opts['type'].lower() == 'flow':
+        fields = {'X', 'Y', 'U', 'V'}
+
+    if opts['filename'] == None:
+        filename = datamap['filename']
+    else:
+        filename = opts['filename']
+
+    try:
+        datamap_file = open(filename)
+    except IOError:
+        print("Could not open data map '%s' for reading." % filename)
+        return None
+
+    reset_fields(datamap, fields)
+
+    # Assert that header contains all desired fields
+    header = datamap_file.readline().strip().upper().split()
+    if not fields.issubset(header):
+        print("No good data map: '%s'" % filename)
+
+        datamap['read'] = False
+        datamap_file.close()
+
+        return None
+
+    if opts['print']:
+        print("Reading data map '%s' ..." % filename, end = ' ', flush = True)
+
+    # Until end of file, read and split lines, append to corresponding
+    # fields in datamap dictionary
+    line = datamap_file.readline().strip()
+    while (line != ''):
+        all_values = line.split()
+
+        if len(all_values) == len(header):
+            for i, read_value in enumerate(all_values):
+                if header[i] in fields:
+                    datamap[header[i]].append(float(read_value))
+
+        line = datamap_file.readline().strip()
+    datamap_file.close()
+
+    # Convert values in N to integer
+    if 'N' in fields:
+        for i, value in enumerate(datamap['N']):
+            datamap['N'][i] = int(value)
+    datamap['read'] = True
+
+    if opts['print']:
+        print("Done.")
+
+    return None
+
+def read_densmap(densmap, **kwargs):
     """Reads a density map and stores values in dictionary."""
 
-    opts = {'print' : True}
-    parse_kwargs(opts, kwargs)
-
-    try:
-        densmap = open(densmap_data['filename'])
-    except IOError:
-        print("Could not open density map '%s' for reading." 
-                % densmap_data['filename'])
-        return None
-
-    fields = ['X', 'Y', 'N', 'T', 'M']
-    reset_fields(densmap_data, fields)
-
-    # Assert that first line is good header and read rest of file
-    header = densmap.readline().strip().upper().split()
-
-    if header == fields:
-        if opts['print']:
-            print("Reading density map '%s' ..." 
-                    % densmap_data['filename'], end = ' ', flush = True)
-
-        line = densmap.readline().strip()
-        while (line != ''):
-            values = line.split()
-
-            if len(values) == 5:
-                for i, value in enumerate(values):
-                    densmap_data[fields[i]].append(float(value))
-
-            line = densmap.readline().strip()
-
-        # Convert values in N to integer
-        for i, value in enumerate(densmap_data['N']):
-            densmap_data['N'][i] = int(value)
-
-        if opts['print']:
-            print("Done.")
-        densmap_data['read'] = True
-
-    else:
-        print("No good density map: '%s'" % densmap_data['filename'])
-        densmap_data['read'] = False
-    
-    densmap.close()
+    read_datamap(densmap, type = 'density', **kwargs)
 
     return None
 
-def read_flowmap(flowmap_data, **kwargs):
+def read_flowmap(flowmap, **kwargs):
     """Reads a flow map and stores values in dictionary."""
 
-    opts = {'print' : True}
-    parse_kwargs(opts, kwargs)
-
-    try:
-        flowmap = open(flowmap_data['filename'])
-    except IOError:
-        print("Could not open flow map '%s' for reading." 
-                % flowmap_data['filename'])
-        return None
-
-    fields = ['X', 'Y', 'U', 'V']
-    reset_fields(flowmap_data, fields)
-
-    # Assert that first line is good header and read rest of file
-    header = flowmap.readline().strip().upper().split()
-
-    if header == fields:
-        if opts['print']:
-            print("Reading flow map '%s' ..." 
-                    % flowmap_data['filename'], end = ' ', flush = True)
-
-        line = flowmap.readline().strip()
-        while (line != ''):
-            values = line.split()
-
-            if len(values) == 4:
-                for i, value in enumerate(values):
-                    flowmap_data[fields[i]].append(float(value))
-
-            line = flowmap.readline().strip()
-
-        if opts['print']:
-            print("Done.")
-        flowmap_data['read'] = True
-
-
-    else:
-        print("No good flow map: '%s'" % flowmap_data['filename'])
-        flowmap_data['read'] = False
-    
-    flowmap.close()
+    read_datamap(flowmap, type = 'flow', **kwargs)
 
     return None
 
-def read_data_from_densmap(system, densmap, print_inp = True):
-    """Reads system data into dictionary from density map."""
+def read_data_from_datamap(system, datamap, print_inp = True):
+    """Reads system data into dictionary from datamap."""
 
     if print_inp:
-        print("Reading density map data ...", end = ' ', flush = True)
+        print("Reading data map data ...", end = ' ', flush = True)
     
-    if not ({'X', 'Y'} < densmap.keys()):
+    if not {'X', 'Y'}.issubset(datamap.keys()):
         print("Density map is not read yet.")
+
         return False
 
-    numcells_total = len(densmap['X'])
+    numcells_total = len(datamap['X'])
 
-    X_first = densmap['X'][0]
-    for cell, X_value in enumerate(densmap['X']):
+    X_first = datamap['X'][0]
+    for cell, X_value in enumerate(datamap['X']):
         if X_value != X_first:
             break
 
     numcells_y = cell
     numcells_x = numcells_total // numcells_y
 
-    cell_dimensions_x = densmap['X'][numcells_y] - densmap['X'][0]
-    cell_dimensions_y = densmap['Y'][1] - densmap['Y'][0]
+    cell_dimensions_x = datamap['X'][numcells_y] - datamap['X'][0]
+    cell_dimensions_y = datamap['Y'][1] - datamap['Y'][0]
 
     system['numcellstotal'] = numcells_total
     system['numcells'] = [numcells_x, numcells_y]
     system['celldimensions'] = [cell_dimensions_x, cell_dimensions_y]
-    system['initdisplacement'] = [densmap['X'][0], densmap['Y'][0]]
+    system['initdisplacement'] = [datamap['X'][0], datamap['Y'][0]]
 
     if print_inp:
         print("Done.")
@@ -163,7 +152,8 @@ def read_data_from_densmap(system, densmap, print_inp = True):
     return True
 
 def read_data_from_file(system):
-    """Reads a data file and stores it in system. Returns a success flag."""
+    """Reads a data file system['datafile'] for information. Returns a 
+    success flag."""
 
     try: 
         datafile = open(system['datafile'], 'r')
@@ -182,10 +172,10 @@ def read_data_from_file(system):
         data, sign, *values = line.split()
 
         if data in data_list or opt_list:
-            system[data] = []
             if len(values) == 1:
                 system[data] = float(values[0])
             else:
+                system[data] = []
                 for var in values:
                     system[data].append(float(var))
 
