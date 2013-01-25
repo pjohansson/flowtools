@@ -65,10 +65,11 @@ def remove_empty_cells(datamap, fields = set()):
 
     i = 0
     while i < len(datamap['U']):
-        if datamap['U'][i] == 0.0 and datamap['V'][i] == 0.0 \
-                and datamap['M'][i] < 30:
-            for field in fields:
-                del(datamap[field][i])
+        if datamap['U'][i] == 0.0 and datamap['V'][i] == 0.0 or \
+                opts['Mmin'] > datamap['M'][i]:
+            if opts['Mmin'] == None or opts['Mmin'] > datamap['M'][i]:
+                for field in fields:
+                    del(datamap[field][i])
         else:
             i += 1
 
