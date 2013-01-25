@@ -95,7 +95,7 @@ def read_datamap(datamap, **kwargs):
     # Convert values in N to integer
     if 'N' in fields:
         for i, value in enumerate(datamap['N']):
-            datamap['N'][i] = int(value)
+            datamap['N'][i] = int(round(value))
     datamap['read'] = True
 
     if opts['print']:

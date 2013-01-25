@@ -18,7 +18,7 @@ def plot_density(frames, **kwargs):
 
     opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
             'save_to' : None, 'dpi' : 200, 'clear' : True,
-            'base' : None, system : {}}
+            'base' : None, 'system' : {}}
     parse_kwargs(opts, kwargs)
 
     # Set system
@@ -27,7 +27,7 @@ def plot_density(frames, **kwargs):
     # Find input base filename
     if opts['base'] != None:
         base_filename = opts['base']
-    else if 'database' in system:
+    elif 'database' in system:
         base_filename = system['database']
 
     # If no good system information, fill in
