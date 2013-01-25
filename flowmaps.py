@@ -22,14 +22,14 @@ def plot_flowmaps(frames, **kwargs):
     To output frame images to .png, enter a base name string using save_to.
     
     A minimum mass number for a cell to be included in plot can be given as
-    Mmin. NOT IMPLEMENTED YET."""
+    Mmin."""
 
     datamap = {}
     data_fields = {'X', 'Y', 'U', 'V', 'M'}
 
     opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
             'save_to' : None, 'dpi' : 200, 'clear' : True, 'temp' : False,
-            'base' : None, 'system' : {}, 'Mmin' : None}
+            'base' : None, 'system' : {}, 'Mmin' : -np.inf}
     parse_kwargs(opts, kwargs)
 
     # Allocate system
@@ -74,7 +74,7 @@ def plot_flowmaps(frames, **kwargs):
                     opts['cuth'], print = False)
 
         # Clean system of bad cells
-        remove_empty_cells(datamap, fields = data_fields)
+        remove_empty_cells(datamap, fields = data_fields, Mmin = opts['Mmin'])
         keep_droplet_cells_in_system(datamap, system, data_fields)
 
         draw_flowmap(datamap, system, temp = opts['temp'], **kwargs)
@@ -114,9 +114,6 @@ def draw_flowmap(datamap, system, **kwargs):
         plt.quiver(datamap['X'], datamap['Y'], datamap['U'], datamap['V'],
                 **kwargs)
     plt.axis('scaled')
-
-    plt.xlim([130, 164])
-    plt.ylim([0, 12])
 
     return None
 
@@ -200,8 +197,6 @@ def draw_flowmap_sub(datamap_one, datamap_two, system_one, system_two,
     plt.title('Flow on uncharged substrate.')
     plt.xlabel('Position (nm)')
     plt.ylabel('Height (nm)')
-    plt.xlim([117.875, 177.875])
-    plt.ylim([0, 20])
 
     plt.subplot(2,1,2)
     plt.quiver(datamap_two['X'], datamap_two['Y'], datamap_two['U'], 
@@ -211,7 +206,5 @@ def draw_flowmap_sub(datamap_one, datamap_two, system_one, system_two,
     plt.title('Flow on charged substrate.')
     plt.xlabel('Position (nm)')
     plt.ylabel('Height (nm)')
-    plt.xlim([114.25, 174.25])
-    plt.ylim([-2, 18])
 
     return None

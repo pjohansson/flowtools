@@ -1,6 +1,7 @@
 """Various utilities for density and flow map work."""
 
-from os import path
+import os
+import numpy as np
 
 def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
     """Advances the frame number by frame_stride (default is one frame)
@@ -11,7 +12,7 @@ def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
     system['frame'] += frame_stride
     new_densmap, new_flowmap = construct_filename(system, **kwargs)
 
-    if path.isfile(new_densmap) and path.isfile(new_flowmap):
+    if os.path.isfile(new_densmap) and os.path.isfile(new_flowmap):
         densmap['filename'] = new_densmap
         flowmap['filename'] = new_flowmap
         success = True
@@ -59,17 +60,20 @@ def reset_fields(data, fields_reset):
 
     return None
 
-def remove_empty_cells(datamap, fields = set()):
+def remove_empty_cells(datamap, **kwargs):
     """Removes cells which have no flow from a data map. Specify fields
-    to remove as a set in the second argument."""
+    to remove as a set in the second argument. A minimum mass can be set
+    as Mmin = minimum."""
+
+    opts = {'fields' : set(), 'Mmin' : -np.inf}
+    parse_kwargs(opts, kwargs)
 
     i = 0
     while i < len(datamap['U']):
-        if datamap['U'][i] == 0.0 and datamap['V'][i] == 0.0 or \
-                opts['Mmin'] > datamap['M'][i]:
-            if opts['Mmin'] == None or opts['Mmin'] > datamap['M'][i]:
-                for field in fields:
-                    del(datamap[field][i])
+        if not ((datamap['U'][i] != 0.0 or datamap['V'][i] != 0.0) and \
+                datamap['M'][i] >= opts['Mmin']):
+            for field in opts['fields']:
+                del(datamap[field][i])
         else:
             i += 1
 
