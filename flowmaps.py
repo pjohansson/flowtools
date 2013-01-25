@@ -15,12 +15,15 @@ def plot_flowmaps(frames, **kwargs):
     The system can be cut in x and y by specifying options cutw and cuth as for
     cut_map. 
 
+    Independently of cutting, xlims and ylims can be specified by setting
+    xlims = and / or ylims = to arrays.
+
     The temperature of corresponding flow cells can colour the map by giving 
     temp = True. If so, adding in values Tmin and Tmax sets limits of the 
     temperature. If no colorbar is desired, give colorbar = False.
 
     To output frame images to .png, enter a base name string using save_to.
-    
+
     A minimum mass number for a cell to be included in plot can be given as
     Mmin."""
 
@@ -29,7 +32,8 @@ def plot_flowmaps(frames, **kwargs):
 
     opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
             'save_to' : None, 'dpi' : 200, 'clear' : True, 'temp' : False,
-            'base' : None, 'system' : {}, 'Mmin' : -np.inf}
+            'base' : None, 'system' : {}, 'Mmin' : -np.inf,
+            'xlim' : None, 'ylim' : None}
     parse_kwargs(opts, kwargs)
 
     # Allocate system
@@ -52,6 +56,11 @@ def plot_flowmaps(frames, **kwargs):
         to_cut = True
         print("Cutting system outside x = %r and y = %r." 
                 % (opts['cutw'], opts['cuth']))
+
+        if opts['xlim'] == None:
+            opts['xlim'] = opts['cutw']
+        if opts['ylim'] == None:
+            opts['ylim'] = opts['cuth']
     else:
         to_cut = False
 
@@ -66,7 +75,7 @@ def plot_flowmaps(frames, **kwargs):
     for i, frame in enumerate(frames):
         data_filename = construct_filename(base_filename, frame)
         read_datamap(datamap, fields = data_fields, filename = data_filename,
-                print = False)
+                print = True)
         
         # If desired, cut and update system data
         if to_cut:
@@ -77,7 +86,8 @@ def plot_flowmaps(frames, **kwargs):
         remove_empty_cells(datamap, fields = data_fields, Mmin = opts['Mmin'])
         keep_droplet_cells_in_system(datamap, system, data_fields)
 
-        draw_flowmap(datamap, system, temp = opts['temp'], **kwargs)
+        draw_flowmap(datamap, system, temp = opts['temp'], 
+                xlim = opts['xlim'], ylim = opts['ylim'], **kwargs)
 
         # Output to file or open new window for next plot
         if opts['save_to'] != None:
@@ -97,7 +107,8 @@ def draw_flowmap(datamap, system, **kwargs):
     using **kwargs."""
 
     opts = {'temp' : False, 'colorbar' : True, 
-            'Tmin' : None, 'Tmax' : None}
+            'Tmin' : None, 'Tmax' : None, 
+            'xlim' : None, 'ylim' : None}
     parse_kwargs(opts, kwargs)
 
     # Call quiver with or without color as temperature
@@ -113,8 +124,15 @@ def draw_flowmap(datamap, system, **kwargs):
     else:
         plt.quiver(datamap['X'], datamap['Y'], datamap['U'], datamap['V'],
                 **kwargs)
+
     plt.axis('scaled')
 
+<<<<<<< HEAD
+=======
+    plt.xlim(opts['xlim'])
+    plt.ylim(opts['ylim'])
+
+>>>>>>> ylim and xlim added.
     return None
 
 def plot_flowmaps_double(system_one, system_two, **kwargs):
