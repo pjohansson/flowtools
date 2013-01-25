@@ -8,19 +8,28 @@ import numpy as np
 import pylab as plt
 
 def plot_flowmaps(frames, **kwargs):
-    """Draws quiver plots of flow maps for specified frames. If no system
-    supplied as input, or information lacking, asks user for file to 
-    read from. By supplying options as for cut_maps in **kwargs the system
-    can be cut before outputting. If so a density map has to be supplied for
-    reconfiguration to succeed.
+    """Draws quiver plots of flow for an array of frame numbers from a system.
+    A system containing numcells and a base filename can be given as system =
+    system. A base filename can also be given as base = 'base filename'. 
+
+    The system can be cut in x and y by specifying options cutw and cuth as for
+    cut_map. 
+
+    The temperature of corresponding flow cells can colour the map by giving 
+    temp = True. If so, adding in values Tmin and Tmax sets limits of the 
+    temperature. If no colorbar is desired, give colorbar = False.
+
+    To output frame images to .png, enter a base name string using save_to.
     
-    To output frame images to .png, enter a base name string for save_to."""
+    A minimum mass number for a cell to be included in plot can be given as
+    Mmin. NOT IMPLEMENTED YET."""
 
     datamap = {}
+    data_fields = {'X', 'Y', 'U', 'V', 'M'}
 
     opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
-            'save_to' : None, 'dpi' : 200, 'clear' : True,
-            'base' : None, system = {}}
+            'save_to' : None, 'dpi' : 200, 'clear' : True, 'temp' : False,
+            'base' : None, 'system' : {}, 'Mmin' : None}
     parse_kwargs(opts, kwargs)
 
     # Allocate system
@@ -29,7 +38,7 @@ def plot_flowmaps(frames, **kwargs):
     # Find input base filename
     if opts['base'] != None:
         base_filename = opts['base']
-    else 'database' in system:
+    else:
         base_filename = system['database']
 
     # If no good system information, fill in
@@ -46,24 +55,29 @@ def plot_flowmaps(frames, **kwargs):
     else:
         to_cut = False
 
+    # If temperature should be shown, add to read list
+    if opts['temp']:
+        data_fields.add('T')
+
     if opts['clear']:
         plt.clf()
 
     # For every frame, read data, normalise and draw or save
     for i, frame in enumerate(frames):
         data_filename = construct_filename(base_filename, frame)
-        read_datamap(datamap, type = 'flow', filename = data_filename,
+        read_datamap(datamap, fields = data_fields, filename = data_filename,
                 print = False)
         
         # If desired, cut and update system data
         if to_cut:
-            cut_map(datamap, {'X', 'Y', 'U', 'V'}, system, **opts)
+            cut_map(datamap, data_fields, system, cutw = opts['cutw'], cuth =
+                    opts['cuth'], print = False)
 
         # Clean system of bad cells
-        remove_empty_cells(datamap, fields = {'X', 'Y', 'U', 'V'})
-        keep_droplet_cells_in_system(datamap, system)
+        remove_empty_cells(datamap, fields = data_fields)
+        keep_droplet_cells_in_system(datamap, system, data_fields)
 
-        draw_flowmap(datamap, system, **kwargs)
+        draw_flowmap(datamap, system, temp = opts['temp'], **kwargs)
 
         # Output to file or open new window for next plot
         if opts['save_to'] != None:
@@ -78,12 +92,31 @@ def plot_flowmaps(frames, **kwargs):
 
     return None
 
-def draw_flowmap(flowmap, system, **kwargs):
+def draw_flowmap(datamap, system, **kwargs):
     """Draws a flow map as a quiver plot. Plot options can be supplied 
     using **kwargs."""
 
-    plt.quiver(flowmap['X'], flowmap['Y'], flowmap['U'], flowmap['V'], **kwargs)
+    opts = {'temp' : False, 'colorbar' : True, 
+            'Tmin' : None, 'Tmax' : None}
+    parse_kwargs(opts, kwargs)
+
+    # Call quiver with or without color as temperature
+    if opts['temp']:
+        plt.quiver(datamap['X'], datamap['Y'], datamap['U'], datamap['V'], 
+                datamap['T'], **kwargs)
+
+        # Set specified temperature limits and if desired colorbar
+        plt.clim(vmin = opts['Tmin'], vmax = opts['Tmax'])
+        if opts['colorbar']:
+            plt.colorbar()
+
+    else:
+        plt.quiver(datamap['X'], datamap['Y'], datamap['U'], datamap['V'],
+                **kwargs)
     plt.axis('scaled')
+
+    plt.xlim([130, 164])
+    plt.ylim([0, 12])
 
     return None
 

@@ -43,7 +43,8 @@ def cut_map(map_to_cut, fields_to_cut, system, **kwargs):
     using keywords 'cutw' and 'cuth' for width and height respectively. 
     Fields are given as a set."""
 
-    opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 'print' : True}
+    opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
+            'print' : True}
     parse_kwargs(opts, kwargs)
 
     if opts['print']:
