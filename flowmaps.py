@@ -118,7 +118,6 @@ def draw_flowmap(datamap, system, **kwargs):
     plt.xlim([130, 164])
     plt.ylim([0, 12])
 
-
     return None
 
 def plot_flowmaps_double(system_one, system_two, **kwargs):
