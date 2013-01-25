@@ -127,12 +127,9 @@ def draw_flowmap(datamap, system, **kwargs):
 
     plt.axis('scaled')
 
-<<<<<<< HEAD
-=======
     plt.xlim(opts['xlim'])
     plt.ylim(opts['ylim'])
 
->>>>>>> ylim and xlim added.
     return None
 
 def plot_flowmaps_double(system_one, system_two, **kwargs):
