@@ -33,7 +33,7 @@ def plot_flowmaps(frames, **kwargs):
     opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
             'save_to' : None, 'dpi' : 200, 'clear' : True, 'temp' : False,
             'base' : None, 'system' : {}, 'Mmin' : -np.inf,
-            'xlim' : None, 'ylim' : None}
+            'xlim' : None, 'ylim' : None, 'print' : False}
     parse_kwargs(opts, kwargs)
 
     # Allocate system
@@ -73,9 +73,13 @@ def plot_flowmaps(frames, **kwargs):
 
     # For every frame, read data, normalise and draw or save
     for i, frame in enumerate(frames):
+        if opts['save_to'] != None:
+            print("\rFrame %d (%d of %d) ..." % (frame, i + 1, len(frames)), 
+                end = ' ', flush = True)
+
         data_filename = construct_filename(base_filename, frame)
         read_datamap(datamap, fields = data_fields, filename = data_filename,
-                print = True)
+                print = opts['print'])
         
         # If desired, cut and update system data
         if to_cut:
@@ -86,14 +90,14 @@ def plot_flowmaps(frames, **kwargs):
         remove_empty_cells(datamap, fields = data_fields, Mmin = opts['Mmin'])
         keep_droplet_cells_in_system(datamap, system, data_fields)
 
+        # Draw magical plot
         draw_flowmap(datamap, system, temp = opts['temp'], 
                 xlim = opts['xlim'], ylim = opts['ylim'], **kwargs)
 
         # Output to file or open new window for next plot
         if opts['save_to'] != None:
-            print("\rFrame %d (%d of %d) ..." % (frame, i + 1, len(frames)), 
-                end = ' ', flush = True)
             save_figure(opts['save_to'], frame, opts['dpi'])
+
         elif frame < frames[-1]:
             plt.figure()
 
@@ -108,7 +112,9 @@ def draw_flowmap(datamap, system, **kwargs):
 
     opts = {'temp' : False, 'colorbar' : True, 
             'Tmin' : None, 'Tmax' : None, 
-            'xlim' : None, 'ylim' : None}
+            'xlim' : None, 'ylim' : None,
+            'title' : 'Flow of droplet impacting on a substrate.',
+            'xlabel' : 'Position (nm)', 'ylabel' : 'Height (nm)'}
     parse_kwargs(opts, kwargs)
 
     # Call quiver with or without color as temperature
@@ -129,6 +135,9 @@ def draw_flowmap(datamap, system, **kwargs):
 
     plt.xlim(opts['xlim'])
     plt.ylim(opts['ylim'])
+    plt.title(opts['title'])
+    plt.xlabel(opts['xlabel'])
+    plt.ylabel(opts['ylabel'])
 
     return None
 
