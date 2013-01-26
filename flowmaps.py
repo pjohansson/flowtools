@@ -30,10 +30,12 @@ def plot_flowmaps(frames, **kwargs):
     datamap = {}
     data_fields = {'X', 'Y', 'U', 'V', 'M'}
 
-    opts = {'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
-            'save_to' : None, 'dpi' : 200, 'clear' : True, 'temp' : False,
-            'base' : None, 'system' : {}, 'Mmin' : -np.inf,
-            'xlim' : None, 'ylim' : None, 'print' : False}
+    opts = {'system' : {}, 'base' : None, 'print' : False,  
+            'save_to' : None, 'dpi' : 200, 'clear' : True,
+            'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
+            'temp' : False,
+            'Mmin' : -np.inf,
+            'xlim' : None, 'ylim' : None}
     parse_kwargs(opts, kwargs)
 
     # Allocate system
