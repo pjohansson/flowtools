@@ -1,4 +1,5 @@
 from cut_system import cut_map
+from density import find_normalising_factor, normalise_density
 from read_data import read_datamap, read_system
 from save_data import save_figure
 from rows import keep_droplet_cells_in_system
@@ -22,6 +23,12 @@ def plot_flowmaps(frames, **kwargs):
     temp = True. If so, adding in values Tmin and Tmax sets limits of the 
     temperature. If no colorbar is desired, give colorbar = False.
 
+    Instead of the temperature colouring the flow, density can by supplying 
+    dens = True. The density will be normalised using system['max_mass'] or
+    Mmax_cell = maximum mass, if none provided it will be calculated for 
+    given frames. Minimum and maximum values to show can be set using Dmin
+    and Dmax.
+
     To output frame images to .png, enter a base name string using save_to.
 
     A minimum mass number for a cell to be included in plot can be given as
@@ -34,6 +41,7 @@ def plot_flowmaps(frames, **kwargs):
             'save_to' : None, 'dpi' : 200, 'clear' : True,
             'cutw' : [-np.inf, np.inf], 'cuth' : [-np.inf, np.inf], 
             'temp' : False,
+            'dens' : False, 'Mmax_cell' : None,
             'Mmin' : -np.inf,
             'xlim' : None, 'ylim' : None}
     parse_kwargs(opts, kwargs)
@@ -69,6 +77,13 @@ def plot_flowmaps(frames, **kwargs):
     # If temperature should be shown, add to read list
     if opts['temp']:
         data_fields.add('T')
+        opts['dens'] = False
+
+    # If density should be shown, add to read list
+    elif opts['dens']:
+        if opts['Mmax_cell'] != None:
+            system['max_mass'] = opts['Mmax_cell']
+        find_normalising_factor(system, base_filename, frames)
 
     if opts['clear']:
         plt.clf()
@@ -92,8 +107,12 @@ def plot_flowmaps(frames, **kwargs):
         remove_empty_cells(datamap, fields = data_fields, Mmin = opts['Mmin'])
         keep_droplet_cells_in_system(datamap, system, data_fields)
 
+        # If density, normalise
+        if opts['dens']:
+            normalise_density(datamap, system)
+
         # Draw magical plot
-        draw_flowmap(datamap, system, temp = opts['temp'], 
+        draw_flowmap(datamap, system, temp = opts['temp'], dens = opts['dens'],
                 xlim = opts['xlim'], ylim = opts['ylim'], **kwargs)
 
         # Output to file or open new window for next plot
@@ -114,6 +133,7 @@ def draw_flowmap(datamap, system, **kwargs):
 
     opts = {'temp' : False, 'colorbar' : True, 
             'Tmin' : None, 'Tmax' : None, 
+            'dens' : False, 'Dmin' : 0, 'Dmax' : 1,
             'xlim' : None, 'ylim' : None,
             'title' : 'Flow of droplet impacting on a substrate.',
             'xlabel' : 'Position (nm)', 'ylabel' : 'Height (nm)'}
@@ -126,6 +146,14 @@ def draw_flowmap(datamap, system, **kwargs):
 
         # Set specified temperature limits and if desired colorbar
         plt.clim(vmin = opts['Tmin'], vmax = opts['Tmax'])
+        if opts['colorbar']:
+            plt.colorbar()
+
+    elif opts['dens']:
+        plt.quiver(datamap['X'], datamap['Y'], datamap['U'], datamap['V'], 
+                datamap['dens_norm'], **kwargs)
+
+        plt.clim(vmin = opts['Dmin'], vmax = opts['Dmax'])
         if opts['colorbar']:
             plt.colorbar()
 
