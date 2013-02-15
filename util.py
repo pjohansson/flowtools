@@ -18,17 +18,17 @@ def advance_frame(system, densmap, flowmap, frame_stride = 1, **kwargs):
         success = True
 
     else:
-        print("Density and / or flow map does not exist for frame %d." 
+        print("Density and / or flow map does not exist for frame %d."
                 % system['frame'])
         system['frame'] = current_frame
         success = False
 
     return success
 
-def construct_filename(base, frame, **kwargs): 
-    """Constructs filenames of data maps from given base and frame number. 
-    In **kwargs a separator can be set using 'sep', extension using 'ext' 
-    and number of zeros 'numd'. These default to '_', '.dat' and '5' 
+def construct_filename(base, frame, **kwargs):
+    """Constructs filenames of data maps from given base and frame number.
+    In **kwargs a separator can be set using 'sep', extension using 'ext'
+    and number of zeros 'numd'. These default to '_', '.dat' and '5'
     respectively."""
 
     opts = {'ext' : '.dat', 'sep' : '_', 'numd' : 5}
@@ -42,7 +42,7 @@ def construct_filename(base, frame, **kwargs):
     return filename
 
 def parse_kwargs(opts, kwargs):
-    """Parses a kwargs array and sets any already in opts to 
+    """Parses a kwargs array and sets any already in opts to
     specified values."""
 
     for arg in opts.keys():
@@ -54,7 +54,7 @@ def parse_kwargs(opts, kwargs):
 
 def reset_fields(data, fields_reset):
     """Resets specified fields in dictionary data."""
-    
+
     for field in fields_reset:
         data[field] = []
 
@@ -68,13 +68,17 @@ def remove_empty_cells(datamap, **kwargs):
     opts = {'fields' : set(), 'Mmin' : -np.inf}
     parse_kwargs(opts, kwargs)
 
-    i = 0
-    while i < len(datamap['U']):
-        if not ((datamap['U'][i] != 0.0 or datamap['V'][i] != 0.0) and \
-                datamap['M'][i] >= opts['Mmin']):
+    keep = {}
+    for field in opts['fields']:
+        keep[field] = []
+
+    for i, _ in enumerate(datamap['U']):
+        if (datamap['U'][i] != 0.0 or datamap['V'][i] != 0.0) and \
+                datamap['M'][i] >= opts['Mmin']:
             for field in opts['fields']:
-                del(datamap[field][i])
-        else:
-            i += 1
+                keep[field].append(datamap[field][i])
+
+    for field in opts['fields']:
+        datamap[field] = keep[field]
 
     return None
