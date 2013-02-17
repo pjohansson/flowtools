@@ -13,8 +13,8 @@ def save_data_to_file(system, saveto_filename, **kwargs):
         return None
 
     fields = {
-            'numcellstotal', 'numcells', 'celldimensions', 
-            'initdisplacement', 'max_mass'
+            'numcellstotal', 'numcells', 'celldimensions',
+            'initdisplacement', 'max_mass', 'floor'
             }
 
     for field in fields:

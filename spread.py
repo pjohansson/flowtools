@@ -21,13 +21,14 @@ def plot_spread_vs_time(system, frames, **kwargs):
     To draw the diagram for all input frames, input relative = False in
     **kwargs array."""
 
-    opts = {'line' : {}, 'relative' : True, 'delta_t' : 0}
+    opts = {'line' : {}, 'relative' : True, 'delta_t' : 0,
+            'Mmin' : -np.inf}
     if 'delta_t' in system.keys():
         opts['delta_t'] = system['delta_t']
     parse_kwargs(opts, kwargs)
 
     find_contact_line_spread(system, frames, contact_line = opts['line'],
-            **kwargs)
+            Mmin = opts['Mmin'], **kwargs)
 
     if opts['relative']:
         trim_empty_head(opts['line'])
@@ -81,7 +82,8 @@ def find_contact_line_spread(system, frames, **kwargs):
     datamap = {}
     fields_flow = {'X', 'Y', 'U', 'V', 'M'}
 
-    opts = {'row' : None, 'contact_line' : {}, 'base' : None}
+    opts = {'row' : None, 'contact_line' : {}, 'base' : None,
+            'Mmin' : -np.inf, 'impact_frame' : 0}
     parse_kwargs(opts, kwargs)
 
     if opts['row'] == None:
@@ -93,14 +95,17 @@ def find_contact_line_spread(system, frames, **kwargs):
     reset_fields(opts['contact_line'], {'frames'})
     opts['contact_line']['spread'] = {'left' : [], 'right' : []}
 
-    for frame in frames:
+    for i, frame in enumerate(frames):
+        print("\rFrame %d (%d of %d) ..." % (frame, i + 1, len(frames)),
+            end = ' ', flush = True)
+
         # Construct filename for frame and read data map
         data_filename = construct_filename(system['database'], frame, **kwargs)
         read_datamap(datamap, fields = fields_flow,
-                filename = data_filename, print = True)
+                filename = data_filename, print = False)
 
         # Clean map of non-good cells and extract cells in row
-        remove_empty_cells(datamap, fields = fields_flow)
+        remove_empty_cells(datamap, fields = fields_flow, Mmin = opts['Mmin'])
         find_cells_in_row(row, datamap, system)
 
         # Remove cells in row of the precursor film and then find the edges
@@ -109,7 +114,7 @@ def find_contact_line_spread(system, frames, **kwargs):
 
 
         # Check if impact or not, ie. if edges are found
-        if row['edges'] == []:
+        if row['edges'] == [] or frame < opts['impact_frame']:
             opts['contact_line']['spread']['left'].append(0.)
             opts['contact_line']['spread']['right'].append(0.)
         else:

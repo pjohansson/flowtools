@@ -4,13 +4,13 @@ from util import parse_kwargs, reset_fields
 
 def read_system(system, **kwargs):
     """If a precalculated data file is supplied in the system dictionary as
-    system['datafile'], reads and stores total number of cells, as well as 
-    for each direction the number of cells, cell dimensions, and system 
+    system['datafile'], reads and stores total number of cells, as well as
+    for each direction the number of cells, cell dimensions, and system
     displacement, in the same dictionary.
 
-    By giving a datamap using from_datamap as a **kwargs the system reads 
-    from the map instead of from a aggregated file. Additionally the **kwargs 
-    from_datafile can be filled with a which to calculate the data from, 
+    By giving a datamap using from_datamap as a **kwargs the system reads
+    from the map instead of from a aggregated file. Additionally the **kwargs
+    from_datafile can be filled with a which to calculate the data from,
     by way of an ordinary data map reading."""
 
     opts = {'print' : True, 'from_datamap' : None, 'from_datafile' : None}
@@ -21,7 +21,7 @@ def read_system(system, **kwargs):
 
     elif opts['from_datafile'] != None:
         datamap = {}
-        read_datamap(datamap, filename = opts['from_datafile'], 
+        read_datamap(datamap, filename = opts['from_datafile'],
             fields = {'X', 'Y'}, print = opts['print'])
         read_data_from_datamap(system, datamap, opts['print'])
 
@@ -31,11 +31,11 @@ def read_system(system, **kwargs):
     return None
 
 def read_datamap(datamap, **kwargs):
-    """Reads a data map datamap['filename'] and stores values in dictionary. 
-    By default reads a full data map, ordinary density or flow maps can be 
-    read by inputting type = 'density' or 'flow' as a **kwargs. If full control 
-    over read fields is wanted, a set can be input using fields = set() in the 
-    same way. This always takes precedense. A different filename can be 
+    """Reads a data map datamap['filename'] and stores values in dictionary.
+    By default reads a full data map, ordinary density or flow maps can be
+    read by inputting type = 'density' or 'flow' as a **kwargs. If full control
+    over read fields is wanted, a set can be input using fields = set() in the
+    same way. This always takes precedense. A different filename can be
     similarly specified using filename as a **kwargs."""
 
     opts = {'print' : True, 'type' : 'full', 'fields' : None, 'filename' : None}
@@ -122,7 +122,7 @@ def read_data_from_datamap(system, datamap, print_inp = True):
 
     if print_inp:
         print("Reading data map data ...", end = ' ', flush = True)
-    
+
     if not {'X', 'Y'}.issubset(datamap.keys()):
         print("Density map is not read yet.")
 
@@ -152,20 +152,20 @@ def read_data_from_datamap(system, datamap, print_inp = True):
     return True
 
 def read_data_from_file(system):
-    """Reads a data file system['datafile'] for information. Returns a 
+    """Reads a data file system['datafile'] for information. Returns a
     success flag."""
 
-    try: 
+    try:
         datafile = open(system['datafile'], 'r')
     except IOError:
-        print("Could not open data file '%s' for reading." 
+        print("Could not open data file '%s' for reading."
                 % system['datafile'])
         return False
 
     data_list = {
             'numcellstotal', 'numcells', 'celldimensions', 'initdisplacement'
             }
-    opt_list = {'max_mass'}
+    opt_list = {'max_mass', 'floor'}
 
     line = datafile.readline().strip()
     while (line != ''):
