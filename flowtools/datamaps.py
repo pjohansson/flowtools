@@ -15,6 +15,9 @@ class DataMap(object):
     where the first index contains row and the second column number of cells.
 
     Example:
+        DataMap('include/datamap.dat') returns a DataMap with cells read from
+        the file 'include/datamap.dat'.
+
         self.cells[:, 10] returns cell information of all rows in the eleventh
         column.
 
@@ -25,25 +28,39 @@ class DataMap(object):
 
     def __init__(self, _path, _fields='all'):
         self.fields = _fields
-        self._path = _path
+        self.path = _path
 
         # Read if given path, otherwise keep empty
-        if self._path:
+        if self.path:
             self.read()
             self.grid()
 
         return None
 
-    @property
-    def path(self):
-        """Path to the data map file."""
-        return self._path
+    class FlatArray(object):
+        """Context manager for flattening arrays for certain operations,
+        restoring them on exit. Returns modified array.
 
-    @path.setter
-    def path(self, _path):
-        self._path = _path
-        self.read()
-        return None
+        Example:
+            with FlatArray(array) as flat_array:
+                ...
+
+        """
+
+        def __init__(self, _array):
+            self.array = _array
+            return None
+
+        def __enter__(self):
+            self.shape = self.array.shape
+            self.array = self.array.transpose().ravel()
+            return self.array
+
+        def __exit__(self, type, value, traceback):
+            self.array.resize(self.shape)
+            self.array = self.array.transpose()
+            return self.array
+
 
     @property
     def fields(self):
@@ -97,7 +114,7 @@ class DataMap(object):
         self.cells = np.array(cells)
         return None
 
-    def save(self, _path, _fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
+    def save(self, _path, fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
         """Save data map to file at given path.
 
         A specific ordering of the written fields can be supplied through a
@@ -108,80 +125,78 @@ class DataMap(object):
 
         """
 
-        with open(_path, 'w') as _file:
-            # Write ordered header
-            header = []
-            for field in fields[:]:
-                if field in self.fields:
-                    header.append('%s' % field)
-                else:
-                    fields.remove(field)
-            header = ' '.join(header) + '\n'
-            _file.write(header)
+        with self.FlatArray(self.cells) as cells:
+            with open(_path, 'w') as _file:
+                # Write ordered header
+                header = []
+                for field in fields[:]:
+                    if field in self.fields:
+                        header.append('%s' % field)
+                    else:
+                        fields.remove(field)
+                header = ' '.join(header) + '\n'
+                _file.write(header)
 
-            # Write all cells in header order
-            for cell in self.cells:
-                line = []
-                for field in fields:
-                    line.append('%f' % cell[field])
-                line = ' '.join(line) + '\n'
-                _file.write(line)
+                # Write all cells in header order
+                for cell in cells:
+                    line = []
+                    for field in fields:
+                        line.append('%f' % cell[field])
+                    line = ' '.join(line) + '\n'
+                    _file.write(line)
 
         return None
 
-    def information(self):
+    def info(self):
         """Scans cells for information data. Returns as dict()."""
 
         # Initiate total dictionary
-        _information = {
+        _info = {
                 'cells': {},
                 'size': {'X': [], 'Y': []}
                 }
 
-        # Flatten
-        _shape = self.cells.transpose().shape
-        self.cells = self.cells.transpose().ravel()
+        with self.FlatArray(self.cells) as cells:
+            # Find system size
+            Dx = [self.cells[0]['X'], cells[-1]['X']]
+            Dy = [self.cells[0]['Y'], cells[-1]['Y']]
 
-        # Find system size
-        Dx = [self.cells[0]['X'], self.cells[-1]['X']]
-        _information['size']['X'] = Dx
-        Dy = [self.cells[0]['Y'], self.cells[-1]['Y']]
-        _information['size']['Y'] = Dy
+            # Initiate with total number of cells
+            cellinfo = {
+                    'total_cells': len(cells),
+                    'num_cells': {},
+                    'size': {}
+                    }
 
-        # Initiate with total number of cells
-        cellinfo = {
-                'total_cells': len(self.cells),
-                'num_cells': {},
-                'size': {}
-                }
+            # Find number of cells in each direction
+            numcells = {'X': 0, 'Y': 0}
+            x = cells[0]['X']
+            while x == cells[numcells['Y']]['X']:
+                numcells['Y'] += 1
 
-        # Find number of cells in each direction
-        numcells = {'X': 0, 'Y': 0}
-        x = self.cells[0]['X']
-        while x == self.cells[numcells['Y']]['X']:
-            numcells['Y'] += 1
-        numcells['X'] = cellinfo['total_cells'] // numcells['Y']
-        cellinfo['num_cells'] = numcells
+            numcells['X'] = cellinfo['total_cells'] // numcells['Y']
+            cellinfo['num_cells'] = numcells
 
-        # Find cell dimensions
-        cellinfo['size']['X'] = (self.cells[cellinfo['num_cells']['Y']]['X']
-                - self.cells[0]['X'])
-        cellinfo['size']['Y'] = self.cells[1]['Y'] - self.cells[0]['Y']
+            # Find cell dimensions
+            cellinfo['size']['X'] = (
+                    cells[cellinfo['num_cells']['Y']]['X']
+                    - cells[0]['X']
+                    )
+            cellinfo['size']['Y'] = cells[1]['Y'] - cells[0]['Y']
 
-        _information['cells'] = cellinfo
+        _info['size']['X'] = Dx
+        _info['size']['Y'] = Dy
+        _info['cells'] = cellinfo
 
-        # Restore shape
-        self.cells.resize(_shape)
-        self.cells = self.cells.transpose()
-        return _information
+        return _info
 
     def grid(self):
         """Rearrange data map cells into 2d numpy array."""
 
-        information = self.information()
+        _info = self.info()
         self.cells.resize(
-                information['cells']['num_cells']['X'],
-                information['cells']['num_cells']['Y']
+                _info['cells']['num_cells']['X'],
+                _info['cells']['num_cells']['Y']
                 )
         self.cells = self.cells.transpose()
         return None
@@ -210,16 +225,16 @@ class DataMap(object):
             return [cut_cell_min, cut_cell_max]
 
         # Get information
-        information = self.information()
+        _info = self.info()
         start = {
-                'X': information['size']['X'][0],
-                'Y': information['size']['Y'][0]
+                'X': _info['size']['X'][0],
+                'Y': _info['size']['Y'][0]
                 }
         cell_size = {
-                'X': information['cells']['size']['X'],
-                'Y': information['cells']['size']['Y']
+                'X': _info['cells']['size']['X'],
+                'Y': _info['cells']['size']['Y']
                 }
-        num_cells = information['cells']['num_cells']
+        num_cells = _info['cells']['num_cells']
 
         # Find cell interval to keep
         cells = {
@@ -231,10 +246,73 @@ class DataMap(object):
                     )
                 }
 
-        # Create and copy data map
+        # Create and copy cut data map
         data_map = DataMap(None)
         data_map.cells = self.cells[
                 cells['Y'][0]:(cells['Y'][1] + 1),
                 cells['X'][0]:(cells['X'][1] + 1)
                 ]
         return data_map
+
+    def com(self):
+        """Returns center of mass of map as dict()."""
+
+        _com = {'X': 0, 'Y': 0}
+        _mass = 0
+
+        try:
+            with self.FlatArray(self.cells) as cells:
+                for cell in cells:
+                    _com['X'] += cell['X'] * cell['M']
+                    _com['Y'] += cell['Y'] * cell['Y']
+                    _mass += cell['M']
+                _com['X'] /= _mass
+                _com['Y'] /= _mass
+
+        except KeyError:
+            print("No mass in data map.")
+
+        return _com
+
+    def __droplet(func):
+        """Decorator for calling functions to test if cells are in droplets or
+        not.
+
+        Supplied func = func(cell) has to return a boolean of whether the
+        cell is part of the droplet or not.
+
+        """
+
+        def wrapper(self, **kwargs):
+            with self.FlatArray(self.cells) as _cells:
+                for cell in _cells:
+                    # Start from True before removing
+                    if 'droplet' not in cell.keys():
+                        cell['droplet'] = True
+
+                    # All conditions must hold
+                    if not (cell['droplet'] and func(cell, **kwargs)):
+                        cell['droplet'] = False
+
+            return None
+        return wrapper
+
+    @__droplet
+    def flow(cell, **kwargs):
+        """Check if a cell contains any flow, decorated to check entire system.
+
+        """
+
+        return cell['U'] or cell['V']
+
+    @__droplet
+    def min_mass(cell, **kwargs):
+        """Check if cell contains mass above an input minimum, decorated to
+        check entire system.
+
+        Example:
+            self.min_mass(min_mass = 25.4)
+
+        """
+
+        return cell['M'] >= kwargs.get('min_mass', 0.)
