@@ -9,6 +9,7 @@ except Exception:
 
 datamap.flow()
 datamap.min_mass()
+datamap.inside()
 
 print(datamap.cells[:,100])
 

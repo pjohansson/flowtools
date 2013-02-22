@@ -284,14 +284,21 @@ class DataMap(object):
         """
 
         def wrapper(self, **kwargs):
-            with self.FlatArray(self.cells) as _cells:
-                for cell in _cells:
-                    # Start from True before removing
-                    if 'droplet' not in cell.keys():
-                        cell['droplet'] = True
+            # Copy information into keywords for functions
+            kwargs['cells'] = self.cells
 
-                    # All conditions must hold
-                    if not (cell['droplet'] and func(cell, **kwargs)):
+            for i, row in enumerate(self.cells):
+                for j, cell in enumerate(row):
+                    # Copy cell information to keywords
+                    kwargs['pos'] = {'column': j, 'row': i}
+                    kwargs['cell'] = cell
+
+                    # Default 'droplet' to True
+                    # Keep as True only if, and checker function returns it
+                    if not (
+                            cell.setdefault('droplet', True)
+                            and func(**kwargs)
+                            ):
                         cell['droplet'] = False
 
             return None
@@ -316,3 +323,43 @@ class DataMap(object):
         """
 
         return cell['M'] >= kwargs.get('min_mass', 0.)
+
+    @__droplet
+    def inside(cells, pos, **kwargs):
+        """Check if cell is well connected to other droplet cells, by going
+        over a set of cells in columns around the considered, checking if
+        any column within this range has a 'droplet' cell in the row above the
+        current. If so, it is controlled if this cell is connected by 'droplet'
+        cells to the initial cell.
+
+        The number of columns by default is one in each direction around the
+        initial cell. This can be changed by supplying the keyword argument
+        columns = number.
+
+        Example:
+            self.inside(column = 3) controls three columns on each side of the
+            cell, inside the same row.
+
+        A large column number may not cut out the precursor film on the
+        substrate.
+
+        Depends on 'droplet' status being set in cells already.
+
+        """
+
+        def check_cell(
+
+        # Set width and get shape of system into dict
+        width = kwargs.get('columns', 1)
+        _shape = dict(list(zip(['rows', 'columns'], cells.shape)))
+
+        for i in list(range(pos['column'] - width, pos['column'] + width + 1)):
+            if 0 <= i < _shape['columns']:
+                # If not top row, check above: else below
+                if pos['row'] + 1 < _shape['rows']:
+                    pass
+
+
+
+
+        return None
