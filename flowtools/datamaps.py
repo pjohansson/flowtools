@@ -1,15 +1,100 @@
+"""
+Classes and tools for data maps.
+
+Classes:
+    System - a set of DataMap objects.
+    DataMap - a single data map.
+
+Functions:
+    create_filenames - creates file names for System.
+
+"""
+
 import math
 import numpy as np
 
+class System(object):
+    """
+    A system, made for operations on a set of DataMap objects.
+
+    Can be initialised with keywords as for DataMap.droplet, as well
+    as 'floor' for a collective floor of the system and 'datamaps'
+    for initial datamaps.
+
+    Methods:
+        self.datamaps - an array of file names of DataMaps.
+        self.droplet_columns - an option for DataMap.droplet
+        self.find_floor - searches self.datamaps for minimum floor, saved
+        self.floor - the collective floor of the system
+        self.info - collective information of the system
+        self.min_mass - an option for DataMap.droplet
+
+    """
+
+    def __init__(self, **kwargs):
+        self.datamaps = kwargs.pop('datamaps', [])
+        self.droplet_columns = kwargs.pop('columns', 1)
+        self.floor = kwargs.pop('floor', None)
+        self.min_mass = kwargs.pop('min_mass', 0.)
+        return None
+
+    @property
+    def datamaps(self):
+        """The DataMaps of the system as a list."""
+        return self._datamaps
+
+    @datamaps.setter
+    def datamaps(self, datamaps):
+        # Ensure that datamaps is a list
+        if not isinstance(datamaps, list):
+            datamaps = [datamaps]
+        self._datamaps = datamaps
+
+    @property
+    def info(self):
+        """
+        Information of the system, read from the first DataMap in
+        the list self.datamaps.
+
+        """
+
+        if self.datamaps:
+            self._info = DataMap(datamaps[0]).info
+            return self._info
+        return dict()
+
+    def find_floor(self):
+        """
+        Finds the floor of the system by reading all DataMaps for it
+        and setting it to the minimum.
+
+        """
+
+        floors = []
+        for datamap in self.datamaps:
+            floors.append(datamap.floor)
+
+        # Guard against empty self.datamaps or no floors found
+        if floors:
+            self.floor = min(floors)
+        return None
+
+
 class DataMap(object):
-    """A data map for flow field data from simulations.
+    """
+    A data map for flow field data from simulations.
 
     Contains cell information in self.cells, arranged into a 2d numpy array
     where the first index contains row and the second column number of cells.
 
+    Keyword arguments can be provided on init as for self.droplet.
+
     Example:
         DataMap('include/datamap.dat') returns a DataMap with cells read from
         the file 'include/datamap.dat'.
+
+        DataMap('include/datamap.dat', min_mass = 25) returns the same
+        DataMap, but with 'droplet' only being cells of a minimum mass 25.
 
         self.cells[:, 10] returns cell information of all rows in the eleventh
         column.
@@ -42,12 +127,13 @@ class DataMap(object):
             self._read()
             self._info = self.info
             self._grid()
-            self.droplet()
+            self.droplet(**kwargs)
 
         return None
 
     class FlatArray(object):
-        """Context manager for flattening arrays for certain operations,
+        """
+        Context manager for flattening arrays for certain operations,
         restoring them on exit. Returns modified array.
 
         Example:
@@ -99,7 +185,8 @@ class DataMap(object):
 
     @fields.setter
     def fields(self, _fields):
-        """Sets which fields the data map contains.
+        """
+        Sets which fields the data map contains.
 
         'all', 'dens' or 'flow' can be supplied as arguments to set fields
         accordingly. The default is 'all'.
@@ -120,7 +207,8 @@ class DataMap(object):
 
     @property
     def floor(self):
-        """Returns the floor of the system, i.e. the lowest row occupied by
+        """
+        Returns the floor of the system, i.e. the lowest row occupied by
         droplet cells.
 
         """
@@ -181,7 +269,8 @@ class DataMap(object):
         return _info
 
     def save(self, _path, fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
-        """Save data map to file at given path.
+        """
+        Save data map to file at given path.
 
         A specific ordering of the written fields can be supplied through a
         list as _fields.
@@ -214,7 +303,8 @@ class DataMap(object):
         return None
 
     def cut(self, **kwargs):
-        """Cut out a certain part of the system, specified by keywords
+        """
+        Cut out a certain part of the system, specified by keywords
         'cutx' = [min(x), max(x)] and 'cuty' = [min(y), max(y)] in system
         positions that should be kept.
 
@@ -280,7 +370,8 @@ class DataMap(object):
         return data_map
 
     def droplet(self, **kwargs):
-        """Check entire system for droplet cells, flagging 'droplet' as
+        """
+        Check entire system for droplet cells, flagging 'droplet' as
         True or False in the cell list.
 
         Checks flow, mass, and runs a function to find connections to
@@ -314,7 +405,8 @@ class DataMap(object):
         return None
 
     def __cells_droplet(func):
-        """Decorator for calling functions to test if cells are in droplets or
+        """
+        Decorator for calling functions to test if cells are in droplets or
         not.
 
         Supplied func = func(cell) has to return a boolean of whether the
@@ -345,7 +437,8 @@ class DataMap(object):
 
     @__cells_droplet
     def _flow(cell, **kwargs):
-        """Check if a cell contains any flow, decorated to check entire system.
+        """
+        Check if a cell contains any flow, decorated to check entire system.
 
         """
 
@@ -353,7 +446,8 @@ class DataMap(object):
 
     @__cells_droplet
     def _min_mass(cell, **kwargs):
-        """Check if cell contains mass above an input minimum, decorated to
+        """
+        Check if cell contains mass above an input minimum, decorated to
         check entire system.
 
         Example:
@@ -365,7 +459,8 @@ class DataMap(object):
 
     @__cells_droplet
     def _inside(cells, pos, **kwargs):
-        """Check if cell at position pos is well connected to other droplet
+        """
+        Check if cell at position pos is well connected to other droplet
         cells, by going over a set of cells in columns around the considered,
         checking if any column within this range has a 'droplet' cell in the
         row above the current. If so, it is controlled if this cell is
@@ -387,7 +482,8 @@ class DataMap(object):
         """
 
         def check_cell(check, row, cell, cells):
-            """Return True if column 'cell' is well connected to cell on
+            """
+            Return True if column 'cell' is well connected to cell on
             row above or belove 'row', starting at column 'check'.
 
             """
@@ -430,7 +526,8 @@ class DataMap(object):
         return False
 
     def _read(self):
-        """Reads information from the data map. Saves cell array in self.cells.
+        """
+        Reads information from the data map. Saves cell array in self.cells.
 
         """
 
@@ -466,30 +563,18 @@ class DataMap(object):
         self.cells = self.cells.transpose()
         return None
 
+def create_filenames(system, basename, numbers, ext='.dat'):
+    """
+    Create and save system.densmaps array from a base filename and
+    a list of numbers.
 
-def edges(datamap, **kwargs):
-    """Return the positions of the edges of a droplet in a DataMap.
-
-    Options for DataMap.droplet can be input as keyword arguments.
+    An extension can be given as the final argument, it defaults to '.dat'.
 
     """
 
-    datamap.droplet(**kwargs)
+    datamaps = []
+    for i in numbers:
+        datamaps.append('%s%05d%s' % (basename, i, ext))
+    system.datamaps = datamaps
 
-    # Get row of floor cells
-    floor = datamap.floor
-    if floor = None:
-        return []
-
-    row = datamap.cells[floor, :]
-
-    # Find edges
-    left = None
-    for i, cell in enumerate(row):
-        if cell['droplet'] and not left:
-            left = i
-        if cell['droplet']:
-            right = i
-            break
-
-    return [left, right]
+    return None
