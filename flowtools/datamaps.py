@@ -21,6 +21,9 @@ class System(object):
     as 'floor' for a collective floor of the system and 'datamaps'
     for initial datamaps.
 
+    Classes:
+        self.open - context manager for opening and reading a DataMap object
+
     Methods:
         self.datamaps - an array of file names of DataMaps.
         self.droplet_columns - an option for DataMap.droplet
@@ -78,6 +81,21 @@ class System(object):
         if floors:
             self.floor = min(floors)
         return None
+
+    class open(object):
+        """Context manager for opening and reading a DataMap."""
+
+        def __init__(self, datamap, **kwargs):
+            self.path = datamap
+            self.kwargs = kwargs
+            return None
+
+        def __enter__(self):
+            self.datamap = DataMap(self.path, **self.kwargs)
+            return self.datamap
+
+        def __exit__(self, type, value, traceback):
+            return None
 
 
 class DataMap(object):
