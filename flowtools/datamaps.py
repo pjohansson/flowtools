@@ -24,16 +24,28 @@ class DataMap(object):
         self.cells[16:22, 12:16] returns cell information of a small, cut box
         of the system.
 
+    Methods:
+        self.com - get the center of mass of the system
+        self.cut - return a new DataMap with cells inside a specified cut
+        self.droplet - mark cells as 'droplet' or not depending on
+            conditions
+        self.fields - get the fields of the droplet
+        self.floor - get the lowest row of the system with 'droplet' cells
+        self.info - get information from the DataMap
+        self.save - save the DataMap to a file
+
     """
 
-    def __init__(self, _path, _fields='all'):
-        self.fields = _fields
+    def __init__(self, _path, **kwargs):
+        self.fields = kwargs.pop('fields', 'all')
         self.path = _path
 
         # Read if given path, otherwise keep empty
         if self.path:
-            self.read()
-            self.grid()
+            self._read()
+            self._info = self.info
+            self._grid()
+            self.droplet()
 
         return None
 
@@ -63,6 +75,27 @@ class DataMap(object):
 
 
     @property
+    def com(self):
+        """Returns center of mass of map as dict()."""
+
+        _com = {'X': 0, 'Y': 0}
+        _mass = 0
+
+        try:
+            with self.FlatArray(self.cells) as cells:
+                for cell in cells:
+                    _com['X'] += cell['X'] * cell['M']
+                    _com['Y'] += cell['Y'] * cell['Y']
+                    _mass += cell['M']
+                _com['X'] /= _mass
+                _com['Y'] /= _mass
+
+        except KeyError:
+            print("No mass in data map.")
+
+        return _com
+
+    @property
     def fields(self):
         """Data fields contained in cells."""
         return self._fields
@@ -88,31 +121,67 @@ class DataMap(object):
         self._fields.update(_add)
         return None
 
-    def read(self):
-        """Reads information from the data map. Saves cell array in self.cells.
+    @property
+    def floor(self):
+        """Returns the floor of the system, i.e. the lowest row occupied by
+        droplet cells.
 
         """
 
-        data = {field: None for field in self.fields}
-        cells = []
+        # Initiate with no floor
+        self._floor = None
 
-        with open(self.path, 'r') as _file:
-            # Assert that header contains desired fields
-            header = _file.readline().strip().upper().split()
-            if not self.fields.issubset(header):
-                raise Exception
-
-            # Read in header order until EOF
-            line = _file.readline().strip().split()
-            while line:
-                for i, add in enumerate(line):
-                    if header[i] in self.fields:
-                        data[header[i]] = float(add)
-                cells.append(data.copy())
-                line = _file.readline().strip().split()
-
-        self.cells = np.array(cells)
+        # Check for first row with 'droplet' cell
+        for row, row_cells in enumerate(self.cells):
+            for cell in row_cells:
+                if cell['droplet']:
+                    self._floor = row
+                    return self._floor
         return None
+
+    @property
+    def info(self):
+        """Scans cells for information data. Returns as dict()."""
+
+        # Initiate total dictionary
+        _info = {
+                'cells': {},
+                'size': {'X': [], 'Y': []}
+                }
+
+        with self.FlatArray(self.cells) as cells:
+            # Find system size
+            Dx = [cells[0]['X'], cells[-1]['X']]
+            Dy = [cells[0]['Y'], cells[-1]['Y']]
+
+            # Initiate with total number of cells
+            cellinfo = {
+                    'total_cells': len(cells),
+                    'num_cells': {},
+                    'size': {}
+                    }
+
+            # Find number of cells in each direction
+            numcells = {'X': 0, 'Y': 0}
+            x = cells[0]['X']
+            while x == cells[numcells['Y']]['X']:
+                numcells['Y'] += 1
+
+            numcells['X'] = cellinfo['total_cells'] // numcells['Y']
+            cellinfo['num_cells'] = numcells
+
+            # Find cell dimensions
+            cellinfo['size']['X'] = (
+                    cells[cellinfo['num_cells']['Y']]['X']
+                    - cells[0]['X']
+                    )
+            cellinfo['size']['Y'] = cells[1]['Y'] - cells[0]['Y']
+
+        _info['size']['X'] = Dx
+        _info['size']['Y'] = Dy
+        _info['cells'] = cellinfo
+
+        return _info
 
     def save(self, _path, fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
         """Save data map to file at given path.
@@ -147,69 +216,17 @@ class DataMap(object):
 
         return None
 
-    def info(self):
-        """Scans cells for information data. Returns as dict()."""
-
-        # Initiate total dictionary
-        _info = {
-                'cells': {},
-                'size': {'X': [], 'Y': []}
-                }
-
-        with self.FlatArray(self.cells) as cells:
-            # Find system size
-            Dx = [self.cells[0]['X'], cells[-1]['X']]
-            Dy = [self.cells[0]['Y'], cells[-1]['Y']]
-
-            # Initiate with total number of cells
-            cellinfo = {
-                    'total_cells': len(cells),
-                    'num_cells': {},
-                    'size': {}
-                    }
-
-            # Find number of cells in each direction
-            numcells = {'X': 0, 'Y': 0}
-            x = cells[0]['X']
-            while x == cells[numcells['Y']]['X']:
-                numcells['Y'] += 1
-
-            numcells['X'] = cellinfo['total_cells'] // numcells['Y']
-            cellinfo['num_cells'] = numcells
-
-            # Find cell dimensions
-            cellinfo['size']['X'] = (
-                    cells[cellinfo['num_cells']['Y']]['X']
-                    - cells[0]['X']
-                    )
-            cellinfo['size']['Y'] = cells[1]['Y'] - cells[0]['Y']
-
-        _info['size']['X'] = Dx
-        _info['size']['Y'] = Dy
-        _info['cells'] = cellinfo
-
-        return _info
-
-    def grid(self):
-        """Rearrange data map cells into 2d numpy array."""
-
-        _info = self.info()
-        self.cells.resize(
-                _info['cells']['num_cells']['X'],
-                _info['cells']['num_cells']['Y']
-                )
-        self.cells = self.cells.transpose()
-        return None
-
-    def cut(self, cutx, cuty):
-        """Cut out a certain part of the system, specified by arrays cutx =
-        [min(x), max(x)] and cuty = [min(y), max(y)] in system positions that
-        should be kept.
+    def cut(self, **kwargs):
+        """Cut out a certain part of the system, specified by keywords
+        'cutx' = [min(x), max(x)] and 'cuty' = [min(y), max(y)] in system
+        positions that should be kept.
 
         Returns a DataMap of the newly cut system, leaving the original intact.
 
         Example:
-            self.cut([13.5, 20.0], [-2, 10])
+            self.cut(cuty = [13.5, 20.0]) to cut only in y.
+
+            self.cut(cutx = [-10, 5], cuty = [0, 15]) to cut in x and y.
 
         """
 
@@ -224,8 +241,18 @@ class DataMap(object):
             cut_cell_max = max_cell(cut[1], start, size, num_cells)
             return [cut_cell_min, cut_cell_max]
 
+        cutx = kwargs.pop('cutx', [-np.inf, np.inf])
+        cuty = kwargs.pop('cuty', [-np.inf, np.inf])
+
         # Get information
-        _info = self.info()
+        _info = self._info
+
+        # Check system limits
+        cutx[0] = max(cutx[0], _info['size']['X'][0])
+        cutx[1] = min(cutx[1], _info['size']['X'][1])
+        cuty[0] = max(cuty[0], _info['size']['Y'][0])
+        cuty[1] = min(cuty[1], _info['size']['Y'][1])
+
         start = {
                 'X': _info['size']['X'][0],
                 'Y': _info['size']['Y'][0]
@@ -252,29 +279,44 @@ class DataMap(object):
                 cells['Y'][0]:(cells['Y'][1] + 1),
                 cells['X'][0]:(cells['X'][1] + 1)
                 ]
+        data_map._info = data_map.info
         return data_map
 
-    def com(self):
-        """Returns center of mass of map as dict()."""
+    def droplet(self, **kwargs):
+        """Check entire system for droplet cells, flagging 'droplet' as
+        True or False in the cell list.
 
-        _com = {'X': 0, 'Y': 0}
-        _mass = 0
+        Checks flow, mass, and runs a function to find connections to
+        ignore precursor films as well as stray cells.
 
-        try:
-            with self.FlatArray(self.cells) as cells:
-                for cell in cells:
-                    _com['X'] += cell['X'] * cell['M']
-                    _com['Y'] += cell['Y'] * cell['Y']
-                    _mass += cell['M']
-                _com['X'] /= _mass
-                _com['Y'] /= _mass
+        Specify a minimum mass using the keyword 'mass', default is 0.
 
-        except KeyError:
-            print("No mass in data map.")
+        Additionally, a tolerance for 'stray droplet cells' can be given
+        as the keyword 'width' to check for connections in. The default
+        is 1 cell on each side of the considered cell. Raising this might
+        make more cells from the precursor film be included, consider the
+        way in which a droplet spreads on a substrate.
 
-        return _com
+        Example:
+            self.droplet(mass = 30.0, width = 2)
 
-    def __droplet(func):
+        This is equivalent to calling the methods _flow(), _mass() and
+        _inside() with equal parameters.
+
+        """
+
+        # Read arguments
+        min_mass = kwargs.pop('min_mass', 0.)
+        columns = kwargs.pop('columns', 1)
+
+        # Call controllers in order
+        self._flow()
+        self._min_mass(min_mass = min_mass)
+        self._inside(columns = columns)
+
+        return None
+
+    def __cells_droplet(func):
         """Decorator for calling functions to test if cells are in droplets or
         not.
 
@@ -304,16 +346,16 @@ class DataMap(object):
             return None
         return wrapper
 
-    @__droplet
-    def flow(cell, **kwargs):
+    @__cells_droplet
+    def _flow(cell, **kwargs):
         """Check if a cell contains any flow, decorated to check entire system.
 
         """
 
         return cell['U'] or cell['V']
 
-    @__droplet
-    def min_mass(cell, **kwargs):
+    @__cells_droplet
+    def _min_mass(cell, **kwargs):
         """Check if cell contains mass above an input minimum, decorated to
         check entire system.
 
@@ -324,21 +366,21 @@ class DataMap(object):
 
         return cell['M'] >= kwargs.get('min_mass', 0.)
 
-    @__droplet
-    def inside(cells, pos, **kwargs):
-        """Check if cell is well connected to other droplet cells, by going
-        over a set of cells in columns around the considered, checking if
-        any column within this range has a 'droplet' cell in the row above the
-        current. If so, it is controlled if this cell is connected by 'droplet'
-        cells to the initial cell.
+    @__cells_droplet
+    def _inside(cells, pos, **kwargs):
+        """Check if cell at position pos is well connected to other droplet
+        cells, by going over a set of cells in columns around the considered,
+        checking if any column within this range has a 'droplet' cell in the
+        row above the current. If so, it is controlled if this cell is
+        connected by 'droplet' cells to the initial cell.
 
         The number of columns by default is one in each direction around the
         initial cell. This can be changed by supplying the keyword argument
         columns = number.
 
         Example:
-            self.inside(column = 3) controls three columns on each side of the
-            cell, inside the same row.
+            self.inside(columns = 3) controls three columns on each side of
+            the cell, inside the same row.
 
         A large column number may not cut out the precursor film on the
         substrate.
@@ -347,19 +389,82 @@ class DataMap(object):
 
         """
 
-        def check_cell(
+        def check_cell(check, row, cell, cells):
+            """Return True if column 'cell' is well connected to cell on
+            row above or belove 'row', starting at column 'check'.
+
+            """
+
+            # Get row to check
+            if row < cells.shape[0] - 1:
+                row += 1
+            else:
+                row -= 1
+
+            # Get sign for movement
+            sign = int(math.copysign(1, cell - check))
+
+            # Check if first check cell is droplet,
+            # then move to original and break if bad connection is found
+            if cells[row, check]['droplet']:
+                for column in list(range(check, cell, sign)):
+                    if (not cells[row, column]['droplet']
+                            and not cells[row, column + sign]['droplet']):
+                        return False
+            else:
+                return False
+            return True
 
         # Set width and get shape of system into dict
         width = kwargs.get('columns', 1)
         _shape = dict(list(zip(['rows', 'columns'], cells.shape)))
 
-        for i in list(range(pos['column'] - width, pos['column'] + width + 1)):
-            if 0 <= i < _shape['columns']:
-                # If not top row, check above: else below
-                if pos['row'] + 1 < _shape['rows']:
-                    pass
+        # Go through columns inside width
+        columns = list(range(
+            pos['column'] - width, pos['column'] + width + 1
+            ))
+        columns.remove(pos['column'])
 
+        for i in columns:
+            # If current column inside row and connection found, return True
+            if (0 <= i < _shape['columns']
+                    and check_cell(i, pos['row'], pos['column'], cells)):
+                return True
+        return False
 
+    def _read(self):
+        """Reads information from the data map. Saves cell array in self.cells.
 
+        """
 
+        data = {field: None for field in self.fields}
+        cells = []
+
+        with open(self.path, 'r') as _file:
+            # Assert that header contains desired fields
+            header = _file.readline().strip().upper().split()
+            if not self.fields.issubset(header):
+                raise Exception
+
+            # Read in header order until EOF
+            line = _file.readline().strip().split()
+            while line:
+                for i, add in enumerate(line):
+                    if header[i] in self.fields:
+                        data[header[i]] = float(add)
+                cells.append(data.copy())
+                line = _file.readline().strip().split()
+
+        self.cells = np.array(cells)
+        return None
+
+    def _grid(self):
+        """Rearrange data map cells into 2d numpy array."""
+
+        _info = self._info
+        self.cells.resize(
+                _info['cells']['num_cells']['X'],
+                _info['cells']['num_cells']['Y']
+                )
+        self.cells = self.cells.transpose()
         return None
