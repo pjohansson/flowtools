@@ -1,13 +1,6 @@
 import math
 import numpy as np
 
-class FlowSystem(object):
-    """A system and corresponding information."""
-
-    def __init__(self):
-        pass
-
-
 class DataMap(object):
     """A data map for flow field data from simulations.
 
@@ -33,6 +26,10 @@ class DataMap(object):
         self.floor - get the lowest row of the system with 'droplet' cells
         self.info - get information from the DataMap
         self.save - save the DataMap to a file
+
+    Classes:
+        self.FlatArray - context manager for working on a one-dimensional
+            array for the cells
 
     """
 
@@ -468,3 +465,31 @@ class DataMap(object):
                 )
         self.cells = self.cells.transpose()
         return None
+
+
+def edges(datamap, **kwargs):
+    """Return the positions of the edges of a droplet in a DataMap.
+
+    Options for DataMap.droplet can be input as keyword arguments.
+
+    """
+
+    datamap.droplet(**kwargs)
+
+    # Get row of floor cells
+    floor = datamap.floor
+    if floor = None:
+        return []
+
+    row = datamap.cells[floor, :]
+
+    # Find edges
+    left = None
+    for i, cell in enumerate(row):
+        if cell['droplet'] and not left:
+            left = i
+        if cell['droplet']:
+            right = i
+            break
+
+    return [left, right]
