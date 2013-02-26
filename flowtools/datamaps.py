@@ -29,6 +29,8 @@ class System(object):
         self.floor - the collective floor of the system
         self.info - collective information of the system
         self.min_mass - an option for DataMap.droplet
+        self.x - position along x of column
+        self.y - position along y of row
 
     """
 
@@ -273,40 +275,6 @@ class DataMap(object):
 
         return _info
 
-    def save(self, _path, fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
-        """
-        Save data map to file at given path.
-
-        A specific ordering of the written fields can be supplied through a
-        list as _fields.
-
-        Example:
-            self.save(path_to_file, ['X', 'U', 'V', 'Y'])
-
-        """
-
-        with self.FlatArray(self.cells) as cells:
-            with open(_path, 'w') as _file:
-                # Write ordered header
-                header = []
-                for field in fields[:]:
-                    if field in self.fields:
-                        header.append('%s' % field)
-                    else:
-                        fields.remove(field)
-                header = ' '.join(header) + '\n'
-                _file.write(header)
-
-                # Write all cells in header order
-                for cell in cells:
-                    line = []
-                    for field in fields:
-                        line.append('%f' % cell[field])
-                    line = ' '.join(line) + '\n'
-                    _file.write(line)
-
-        return None
-
     def cut(self, **kwargs):
         """
         Cut out a certain part of the system, specified by keywords
@@ -408,6 +376,48 @@ class DataMap(object):
         self._inside(columns = columns)
 
         return None
+
+    def save(self, _path, fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
+        """
+        Save data map to file at given path.
+
+        A specific ordering of the written fields can be supplied through a
+        list as _fields.
+
+        Example:
+            self.save(path_to_file, ['X', 'U', 'V', 'Y'])
+
+        """
+
+        with self.FlatArray(self.cells) as cells:
+            with open(_path, 'w') as _file:
+                # Write ordered header
+                header = []
+                for field in fields[:]:
+                    if field in self.fields:
+                        header.append('%s' % field)
+                    else:
+                        fields.remove(field)
+                header = ' '.join(header) + '\n'
+                _file.write(header)
+
+                # Write all cells in header order
+                for cell in cells:
+                    line = []
+                    for field in fields:
+                        line.append('%f' % cell[field])
+                    line = ' '.join(line) + '\n'
+                    _file.write(line)
+
+        return None
+
+    def x(self, column):
+        """Return the system position of column, i.e. along the x axis."""
+        return self.cells[0, column]['X']
+
+    def y(self, row):
+        """Return the system position of row, i.e. along the y axis."""
+        return self.cells[row, 0]['Y']
 
     def __cells_droplet(func):
         """
