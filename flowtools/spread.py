@@ -160,16 +160,17 @@ def edges(datamap, **kwargs):
 
     # Find edges
     left = None
+    _edges = []
     for i, cell in enumerate(row):
         if cell['droplet'] and not left:
             left = i
         if cell['droplet']:
             right = i
+            _edges = [left, right]
 
-    return [left, right]
+    return _edges
 
 @draw
 def plot(spread):
-
-
+    plt.plot(spread.spread['times'], spread.spread['left'])
     return None
