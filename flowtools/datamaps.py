@@ -21,9 +21,6 @@ class System(object):
     as 'floor' for a collective floor of the system, 'datamaps' for
     initial datamaps and 'delta_t' for difference in time between maps.
 
-    Classes:
-        self.open - context manager for opening and reading a DataMap object
-
     Methods:
         self.datamaps - an array of file names of DataMaps.
         self.delta_t - the difference in time between DataMaps
@@ -64,7 +61,7 @@ class System(object):
         """
 
         if self.datamaps:
-            self._info = DataMap(datamaps[0]).info
+            self._info = DataMap(self.datamaps[0]).info
             return self._info
         return dict()
 
@@ -76,28 +73,12 @@ class System(object):
         """
 
         floors = []
-        for datamap in self.datamaps:
-            floors.append(datamap.floor)
+        for datamap in self.datamaps: floors.append(datamap.floor)
 
         # Guard against empty self.datamaps or no floors found
         if floors:
             self.floor = min(floors)
         return None
-
-    class open(object):
-        """Context manager for opening and reading a DataMap."""
-
-        def __init__(self, datamap, **kwargs):
-            self.path = datamap
-            self.kwargs = kwargs
-            return None
-
-        def __enter__(self):
-            self.datamap = DataMap(self.path, **self.kwargs)
-            return self.datamap
-
-        def __exit__(self, type, value, traceback):
-            return None
 
 
 class DataMap(object):
@@ -187,9 +168,13 @@ class DataMap(object):
         try:
             with self.FlatArray(self.cells) as cells:
                 for cell in cells:
-                    _com['X'] += cell['X'] * cell['M']
-                    _com['Y'] += cell['Y'] * cell['Y']
-                    _mass += cell['M']
+                    # Add if 'droplet'
+                    if cell['droplet']:
+                        _com['X'] += cell['X'] * cell['M']
+                        _com['Y'] += cell['Y'] * cell['Y']
+                        _mass += cell['M']
+
+                # Average over mass
                 _com['X'] /= _mass
                 _com['Y'] /= _mass
 
