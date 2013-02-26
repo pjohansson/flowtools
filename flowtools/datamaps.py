@@ -18,14 +18,15 @@ class System(object):
     A system, made for operations on a set of DataMap objects.
 
     Can be initialised with keywords as for DataMap.droplet, as well
-    as 'floor' for a collective floor of the system and 'datamaps'
-    for initial datamaps.
+    as 'floor' for a collective floor of the system, 'datamaps' for
+    initial datamaps and 'delta_t' for difference in time between maps.
 
     Classes:
         self.open - context manager for opening and reading a DataMap object
 
     Methods:
         self.datamaps - an array of file names of DataMaps.
+        self.delta_t - the difference in time between DataMaps
         self.droplet_columns - an option for DataMap.droplet
         self.find_floor - searches self.datamaps for minimum floor, saved
         self.floor - the collective floor of the system
@@ -36,6 +37,7 @@ class System(object):
 
     def __init__(self, **kwargs):
         self.datamaps = kwargs.pop('datamaps', [])
+        self.delta_t = kwargs.pop('delta_t', 0.)
         self.droplet_columns = kwargs.pop('columns', 1)
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', 0.)
