@@ -36,7 +36,7 @@ class System(object):
 
     def __init__(self, **kwargs):
         self.datamaps = kwargs.pop('datamaps', [])
-        self.delta_t = kwargs.pop('delta_t', 0.)
+        self.delta_t = kwargs.pop('delta_t', None)
         self.droplet_columns = kwargs.pop('columns', 1)
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', 0.)
@@ -75,7 +75,8 @@ class System(object):
         """
 
         floors = []
-        for datamap in self.datamaps: floors.append(datamap.floor)
+        for datamap in self.datamaps:
+            floors.append(DataMap(datamap).floor)
 
         # Guard against empty self.datamaps or no floors found
         if floors:
