@@ -195,7 +195,7 @@ class Spread(object):
 
             # Write header and then fields
             _file.write("Spread:\n")
-            header = ("%8s %8s %8s %8s %8s %8s %8s\n"
+            header = ("%9s %9s %9s %9s %9s %9s %9s\n"
                     % (
                         'left', 'right', 'com_left', 'com_right',
                         'frames', 'times', 'dist'
@@ -465,6 +465,9 @@ class System(object):
                         edges, self.floor, self.delta_t, com_impact, datamap
                         )
                 self._spread._add(frame)
+
+        if kwargs.get('print', True):
+            print()
 
         return self._spread
 
