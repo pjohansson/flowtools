@@ -23,8 +23,8 @@ parser.add_argument('-s', '--start', type=int, default=1,
         help="initial frame number")
 parser.add_argument('-e', '--end', type=int, default=np.inf,
         help="final frame number")
-parser.add_argument('-rel', '--relative', action='store_false',
-        help="save to filename in same base directory as files (True)")
+parser.add_argument('-rel', '--relative', action='store_true',
+        help="save to path relative to input base directory (False)")
 
 # Parse
 args = parser.parse_args()
