@@ -2,3 +2,7 @@
 *.swp
 *.o
 __pycache__
+
+img/*
+*.png
+*.dat
