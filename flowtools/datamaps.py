@@ -2,8 +2,9 @@
 Classes and tools for data maps.
 
 Classes:
-    System - a set of DataMap objects.
     DataMap - a single data map.
+    Spread - the spreading of a System
+    System - a set of DataMap objects.
 
 Functions:
     create_filenames - creates file names for System.
@@ -17,6 +18,241 @@ import math
 import numpy as np
 import pylab as plt
 
+class Spread(object):
+    """
+    The spreading collected from a System.
+
+    Can be supplied with the base filenames, minimum mass and floor of
+    DataMaps that are used in the creation.
+
+    Keywords:
+        base - base filename
+        delta_t - time difference between frames
+        floor - floor of system
+        min_mass - minimum mass of system
+
+    Properties:
+        impact - the impact frame of the system
+
+    Methods:
+        read - read spreading information from a file
+        save - save spreading information to a file
+        times - recalculate the times using a supplied delta_t
+
+    """
+
+    def __init__(self, **kwargs):
+        self._reset()
+
+        self.delta_t = kwargs.pop('delta_t', None)
+        self.floor = kwargs.pop('floor', None)
+        self.min_mass = kwargs.pop('min_mass', None)
+        self.base = kwargs.pop('base', None)
+
+        return None
+
+    @property
+    def impact(self):
+        """The impact frame of the system."""
+        if self.frames:
+            return self.frames[0]
+
+        return None
+
+    def plot(self, **kwargs):
+        """
+        Draw the spread as a function of frames, times or distance from
+        substrate floor to center of mass. By default plots the distance
+        from edges to center of mass of impact, this can be turned off
+        by supplying the keyword com = False.
+
+        Keywords:
+            com - True (default) or False to draw the spreading around the
+                center of mass of the droplet
+            dist - True or False (default) to draw as a function of
+                distance to center of mass from floor
+            frames - True or False (default) to draw as a function of frame
+                number
+            times - True or False (default) to draw as a function of time
+            Others as for draw.draw
+
+
+        """
+
+        @draw
+        def plot_lines(**kwargs):
+            """Plot the spread as a function of supplied list."""
+
+            spread = kwargs.pop('spread')
+            x = kwargs.pop('x')
+
+            kwargs.setdefault('color', 'blue')
+            label = kwargs.pop('label', '_nolegend_')
+
+            plt.plot(x, spread['left'], label = label, **kwargs)
+            plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
+                    **kwargs)
+
+            return None
+
+        times = kwargs.pop('times', False)
+        frames = kwargs.pop('frames', False)
+        dist = kwargs.pop('dist', False)
+
+        # By default use spread around com
+        if kwargs.pop('com', True):
+            spread = {'left': self.com['left'], 'right': self.com['right']}
+        else:
+            spread = {'left': self.left, 'right': self.right}
+
+        kwargs.update({'spread': spread})
+        kwargs.update({'figure': False})
+        kwargs.setdefault('ylabel', 'Positions (nm)')
+        kwargs.setdefault('title', 'Spreading of droplet on substrate')
+
+        if times and self.times:
+            kwargs.update({'x': self.times})
+            kwargs.setdefault('xlabel', 'Time (ps)')
+            kwargs.setdefault('axis', 'equal')
+
+            plot_lines(**kwargs)
+
+        elif frames and self.frames:
+            kwargs.update({'x': self.frames})
+            kwargs.setdefault('xlabel', 'Frame')
+            kwargs.setdefault('axis', 'equal')
+
+            plot_lines(**kwargs)
+
+        elif dist and self.dist:
+            kwargs.update({'x': self.dist})
+            kwargs.setdefault(
+                    'xlabel', 'Distance from substrate to center of mass (nm)'
+                    )
+            kwargs.setdefault('axis', 'normal')
+
+            plot_lines(**kwargs)
+
+            # Invert x axis for distance
+            plt.gca().invert_xaxis()
+
+        return None
+
+    def read(self, _path):
+        """Read spread information from a file at _path."""
+
+        self._reset()
+
+        with open(_path) as _file:
+            # Read general information until Spreading
+            line = _file.readline().strip()
+
+            while not line.startswith('Spread:'):
+                if line.startswith('Floor'):
+                    self.floor = int(line.split(':')[-1])
+
+                if line.startswith('Min mass'):
+                    self.min_mass = float(line.split(':')[-1])
+
+                if line.startswith('delta_t'):
+                    self.delta_t = float(line.split(':')[-1])
+
+                line = _file.readline().strip()
+
+            # Append spreading until end of file
+            line = _file.readline().strip()
+            line = _file.readline().strip()
+            while line:
+                values = line.split()
+                self.left.append(float(values.pop(0)))
+                self.right.append(float(values.pop(0)))
+                self.com['left'].append(float(values.pop(0)))
+                self.com['right'].append(float(values.pop(0)))
+                self.frames.append(int(values.pop(0)))
+                self.times.append(float(values.pop(0)))
+                self.dist.append(float(values.pop(0)))
+
+                line = _file.readline().strip()
+
+        return self
+
+    def save(self, _path):
+        """Save the spread information to a file at _path."""
+
+        with open(_path, 'w') as _file:
+            # Write general information
+            if self.base != None:
+                _file.write("Path: %s\n" % self.base)
+            _file.write("Impact frame: %d\n" % self.impact)
+            if self.delta_t != None:
+                _file.write("Delta_t: %f\n" % self.delta_t)
+            if self.floor != None:
+                _file.write("Floor: %d\n" % self.floor)
+            if self.min_mass != None:
+                _file.write("Min mass: %f\n" % self.min_mass)
+            _file.write('\n')
+
+            # Write header and then fields
+            _file.write("Spread:\n")
+            header = ("%8s %8s %8s %8s %8s %8s %8s\n"
+                    % (
+                        'left', 'right', 'com_left', 'com_right',
+                        'frames', 'times', 'dist'
+                        )
+                    )
+            _file.write(header)
+
+            for i, _ in enumerate(self.frames):
+                line = ("%8.3f %8.3f %8.3f %8.3f %8d %8.3f %8.3f\n"
+                        % (
+                            self.left[i], self.right[i],
+                            self.com['left'][i], self.com['right'][i],
+                            self.frames[i],
+                            self.times[i],
+                            self.dist[i]
+                            )
+                        )
+                _file.write(line)
+
+            return None
+
+    def times(self, delta_t):
+        """Recalculate self.times for a different delta_t."""
+
+        for i, frame in enumerate(self.frames):
+            self.times[i] = frame * delta_t
+
+        return None
+
+    def _add(self, frame):
+        """Add a frame of spreading."""
+
+        self.left.append(frame.pop('left'))
+        self.right.append(frame.pop('right'))
+
+        com = frame.pop('com')
+        self.com['left'].append(com['left'])
+        self.com['right'].append(com['right'])
+
+        self.frames.append(frame.pop('frame'))
+        self.times.append(frame.pop('time'))
+        self.dist.append(frame.pop('dist'))
+
+        return None
+
+    def _reset(self):
+        """Reset the system."""
+
+        self.left = []
+        self.right = []
+        self.com = {'left': [], 'right': []}
+        self.dist = []
+        self.frames = []
+        self.times = []
+
+        return None
+
+
 class System(object):
     """
     A system, made for operations on a set of DataMap objects.
@@ -26,29 +262,30 @@ class System(object):
     initial datamaps and 'delta_t' for difference in time between maps.
 
     Methods:
-        self.datamaps - an array of file names of DataMaps.
-        self.delta_t - the difference in time between DataMaps
-        self.droplet_columns - an option for DataMap.droplet
-        self.find_floor - searches self.datamaps for minimum floor, saved
-        self.floor - the collective floor of the system
-        self.info - collective information of the system
-        self.min_mass - an option for DataMap.droplet
-        self.x - position along x of column
-        self.y - position along y of row
+        datamaps - an array of file names of DataMaps.
+        delta_t - the difference in time between DataMaps
+        droplet_columns - an option for DataMap.droplet
+        floor - the collective floor of the system
+        info - collective information of the system
+        min_mass - an option for DataMap.droplet
+        x - position along x of column
+        y - position along y of row
 
     """
 
     def __init__(self, **kwargs):
         self.datamaps = kwargs.pop('datamaps', [])
-        self.delta_t = kwargs.pop('delta_t', 0)
-        self.droplet_columns = kwargs.pop('columns', 1)
+        self.delta_t = kwargs.pop('delta_t', 0.)
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', 0.)
+        self._droplet_columns = kwargs.pop('columns', 1)
+
         return None
 
     @property
     def datamaps(self):
         """The DataMaps of the system as a list."""
+
         return self._datamaps
 
     @datamaps.setter
@@ -57,6 +294,8 @@ class System(object):
         if not isinstance(datamaps, list):
             datamaps = [datamaps]
         self._datamaps = datamaps
+
+        return None
 
     @property
     def info(self):
@@ -69,23 +308,115 @@ class System(object):
         if self.datamaps:
             self._info = DataMap(self.datamaps[0]).info
             return self._info
+
         return dict()
 
-    def find_floor(self):
+    def spread(self, **kwargs):
         """
-        Finds the floor of the system by reading all DataMaps for it
-        and setting it to the minimum.
+        Find and return the spreading of a droplet for datamaps in
+        the system.
+
+        Spreading is returned as a dictionary containing spreading edges
+        in system coordinates as lists 'left' and 'right', and from center
+        of mass position in dictionary 'com' = {'left', 'right'} where
+        'left' and 'right' are lists as for system. Times are saved in
+        different lists as 'frames', 'times' and 'dist', standing for
+        frame number, time and distance from substrate to the center of
+        mass.
+
+        Keywords:
+            print - True (default) or False to print status for collection
 
         """
 
-        floors = []
-        for datamap in self.datamaps:
-            floors.append(DataMap(datamap).floor)
+        def collect(edges, floor, delta_t, com, datamap):
+            """
+            Collect frame information into dictionary for Spread
+            object.
 
-        # Guard against empty self.datamaps or no floors found
-        if floors:
-            self.floor = min(floors)
-        return None
+            """
+
+            frame = {
+                    'left': edges['left'], 'right': edges['right'],
+                    'com': {
+                        'left': edges['left'] - com['X'],
+                        'right': edges['right'] - com['X']
+                        },
+                    'frame': i, 'time': i * delta_t,
+                    'dist': com['Y'] - datamap.y(floor)
+                    }
+
+            return frame
+
+        def find_edges(datamap, floor):
+            """
+            Find edges of DataMap in row floor.
+
+            Return dictionary with keys 'left' and 'right' for edge
+            positions if found. If no positions found an empty dictionary
+            is returned.
+
+            """
+
+            edges = {}
+            row = datamap.cells[floor, :]
+
+            # Get first and last droplet cells in row
+            left = None
+
+            for i, cell in enumerate(row):
+                if cell['droplet']:
+
+                    right = i
+                    if left == None:
+                        left = i
+
+            # Get positions from edges and cell dimensions
+            if left != None and right != None:
+                cell_size = datamap.info['cells']['size']['X']
+                edges = {
+                        'left': (datamap.x(left) - cell_size / 2),
+                        'right': (datamap.x(right) + cell_size / 2)
+                        }
+
+            return edges
+
+        self._spread = Spread(
+                min_mass = self.min_mass, delta_t = self.delta_t,
+                floor = self.floor
+                )
+        if self.floor == None:
+            raise KeyError("self.floor not set")
+
+        for i, _file in enumerate(self.datamaps):
+            # Print status if desired
+            if kwargs.get('print', True):
+                print("\rReading '%s' (%d of %d)"
+                        % (_file, i + 1, len(self.datamaps)),
+                        end = ' '
+                        )
+
+            # Read DataMap with options
+            datamap = DataMap(
+                    _file, min_mass = self.min_mass,
+                    columns = self._droplet_columns
+                    )
+
+            # Get center of mass, calculate edges
+            edges = find_edges(datamap, self.floor)
+
+            # If edges found, collect and append frame information
+            if edges:
+                # At impact, get center of mass
+                if self._spread.impact == None:
+                    com_impact = datamap.com
+
+                frame = collect(
+                        edges, self.floor, self.delta_t, com_impact, datamap
+                        )
+                self._spread._add(frame)
+
+        return self._spread
 
 
 class DataMap(object):
@@ -111,17 +442,16 @@ class DataMap(object):
         of the system.
 
     Methods:
-        self.com - get the center of mass of the system
-        self.cut - return a new DataMap with cells inside a specified cut
-        self.droplet - mark cells as 'droplet' or not depending on
-            conditions
-        self.fields - get the fields of the droplet
-        self.floor - get the lowest row of the system with 'droplet' cells
-        self.info - get information from the DataMap
-        self.save - save the DataMap to a file
+        com - get the center of mass of the system
+        cut - return a new DataMap with cells inside a specified cut
+        droplet - mark cells as 'droplet' or not depending on conditions
+        fields - get the fields of the droplet
+        floor - get the lowest row of the system with 'droplet' cells
+        info - get information from the DataMap
+        save - save the DataMap to a file
 
     Classes:
-        self.FlatArray - context manager for working on a one-dimensional
+        FlatArray - context manager for working on a one-dimensional
             array for the cells
 
     """
