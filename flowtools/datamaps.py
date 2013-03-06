@@ -173,6 +173,10 @@ class Spread(object):
                 self.times.append(float(values.pop(0)))
                 self.dist.append(float(values.pop(0)))
 
+                if len(values) == 2:
+                    self.error['left'].append(float(values.pop(0)))
+                    self.error['right'].append(float(values.pop(0)))
+
                 line = _file.readline().strip()
 
         return self
@@ -195,16 +199,21 @@ class Spread(object):
 
             # Write header and then fields
             _file.write("Spread:\n")
-            header = ("%9s %9s %9s %9s %9s %9s %9s\n"
+            header = ("%9s %9s %9s %9s %9s %9s %9s"
                     % (
                         'left', 'right', 'com_left', 'com_right',
                         'frames', 'times', 'dist'
                         )
                     )
+
+            if self.error['left'] and self.error['right']:
+                header += ' %9s %9s' % ('err_left', 'err_right')
+
+            header += '\n'
             _file.write(header)
 
             for i, _ in enumerate(self.frames):
-                line = ("%9.3f %9.3f %9.3f %9.3f %9d %9.3f %9.3f\n"
+                line = ("%9.3f %9.3f %9.3f %9.3f %9d %9.3f %9.3f"
                         % (
                             self.left[i], self.right[i],
                             self.com['left'][i], self.com['right'][i],
@@ -213,6 +222,14 @@ class Spread(object):
                             self.dist[i]
                             )
                         )
+
+                if self.error['left'] and self.error['right']:
+                    line += (
+                            " %9.3f %9.3f"
+                            % (self.error['left'][i], self.error['right'][i])
+                            )
+
+                line += '\n'
                 _file.write(line)
 
             return None
@@ -248,6 +265,7 @@ class Spread(object):
         self.right = []
         self.com = {'left': [], 'right': []}
         self.dist = []
+        self.error = {'left': [], 'right': []}
         self.frames = []
         self.times = []
 
