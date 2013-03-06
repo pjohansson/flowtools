@@ -6,7 +6,6 @@ Classes:
 
 Functions:
     edges - find the edges of a DataMap for a specific row, or floor
-    plot - plot a Spread object
 
 """
 
@@ -25,45 +24,70 @@ class Spread(object):
     Methods:
         self.com - adjusts the spreading edges to the center of mass
         self.collect - collect the spreading edges to self.spread
+        self.plot - plot the spreading
         self.times - add times to spreading from delta_t
         self.spread - the spreading, including frames, of the system
         self.system - the System object connected to the spread
 
     """
 
-    def __init__(self, system, delta_t=None):
-        # Initiate system with keywords
-        self.system = system
+    def __init__(self, system=None, **kwargs):
+        # If file to read supplied, else collect from system
+        if kwargs.get('read', False):
+            self.read(kwargs.get('read'))
+        else:
+            # Initiate system with keywords
+            self.system = system
 
-        # If no floor set, find
-        if not self.system.floor:
-            self.system.find_floor()
+            # If no floor set, find
+            if not self.system.floor:
+                self.system.find_floor()
 
-        self.collect(delta_t)
+            self.collect(**kwargs)
 
         return None
 
-    def collect(self, delta_t=None):
+    def collect(self, **kwargs):
         """
         Collect edges from all DataMap objects in system to self.spread.
 
+        Keywords:
+            columns - setting for DataMap.droplet when asserting if cell is
+                inside droplet
+            dist - True (default) or False, collect distance to center of mass
+            min_mass - minimum mass for cells to count
+
         """
+
+        delta_t = kwargs.pop('delta_t', None)
+        dist = kwargs.pop('dist', True)
+        self.min_mass = kwargs.setdefault('min_mass', self.system.min_mass)
+        self.floor = self.system.floor
+        _print = kwargs.pop('print', False)
 
         # Reset spread
         self.spread = {
-                'left': [], 'right': [], 'frames': [], 'cells': [], 'times': []
+                'left': [], 'right': [], 'cells': [],
+                'frames': [], 'times': [], 'dist': []
                 }
 
         for i, _file in enumerate(self.system.datamaps):
-            datamap = DataMap(_file)
-            _edges = edges(datamap, floor = self.system.floor)
+            if _print:
+                print("\bReading '%s' (%d of %d)"
+                        % (_file, i + 1, len(self.system.datamaps)),
+                        end = '')
+
+            datamap = DataMap(_file, min_mass = self.min_mass)
+            _edges = edges(datamap, floor = self.floor,
+                    min_mass = self.min_mass)
 
             # Append if _edges not empty
             if _edges:
-                self._add(_edges, i, datamap)
+                self._add(_edges, i, datamap, dist = dist)
 
         # Get times
-        self.times(delta_t = delta_t)
+        if delta_t:
+            self.times(delta_t = delta_t)
 
         return None
 
@@ -84,6 +108,151 @@ class Spread(object):
             self.spread['right'][i] -= com['X']
 
         return None
+
+    def dist(self):
+        """
+        Add a keyword 'dist' to self.spread, filling it with a list
+        of the distance between the floor and the center of mass of the
+        droplet for corresponding frames.
+
+        """
+
+        self.spread['dist'] = []
+
+        for datamap in self.system.datamaps:
+            _map = DataMap(datamap)
+            com = _map.com.get('Y')
+            floor = _map.y(self.system.floor)
+
+            self.spread['dist'].append(com - floor)
+
+        return None
+
+    def plot(self, **kwargs):
+        """
+        Draw the spread as a function of frames or times.
+
+        Keywords:
+            frames - True or False (default to draw as a function of frames
+            times - True (default) or False to draw as a function of time
+            Others as for draw.draw
+
+        """
+
+        @draw
+        def plot_lines(**kwargs):
+            """Plot the spread as a function of supplied list."""
+
+            spread = kwargs.pop('spread')
+            x = kwargs.pop('x')
+
+            kwargs.setdefault('color', 'blue')
+            label = kwargs.pop('label', None)
+
+            plt.plot(x, spread['left'], label = label, **kwargs)
+            plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
+                    **kwargs)
+
+
+            return None
+
+        times = kwargs.pop('times', False)
+        frames = kwargs.pop('frames', False)
+        dist = kwargs.pop('dist', False)
+
+        kwargs.update({'spread': self.spread})
+        kwargs.update({'figure': False})
+        kwargs.setdefault('ylabel', 'Positions (nm)')
+        kwargs.setdefault('title', 'Spreading of droplet on substrate')
+
+        if self.spread['times'] and times:
+            kwargs.update({'x': self.spread['times']})
+            kwargs.setdefault('xlabel', 'Time (ps)')
+            kwargs.setdefault('axis', 'equal')
+
+            plot_lines(**kwargs)
+
+        if self.spread['frames'] and frames:
+            kwargs.update({'x': self.spread['frames']})
+            kwargs.setdefault('xlabel', 'Frame')
+            kwargs.setdefault('axis', 'equal')
+
+            plot_lines(**kwargs)
+
+        if self.spread['dist'] and dist:
+            kwargs.update({'x': self.spread['dist']})
+            kwargs.setdefault(
+                    'xlabel', 'Distance from substrate to center of mass (nm)'
+                    )
+            kwargs.setdefault('axis', 'normal')
+
+            plot_lines(**kwargs)
+
+            # Invert x axis for distance
+            plt.gca().invert_xaxis()
+
+        return None
+
+    def read(self, _path):
+        """Read spread information from a file at _path."""
+
+        self.spread = {
+                'left': [], 'right': [], 'cells': [],
+                'frames': [], 'times': [], 'dist': []
+                }
+
+        with open(_path) as _file:
+            frame = _file.readline().strip().split()[-1]
+            floor = _file.readline().strip().split()[-1]
+            min_mass = _file.readline().strip().split()[-1]
+
+            frame = int(frame)
+            self.floor = int(floor)
+            self.min_mass = float(min_mass)
+
+            line = _file.readline().strip()
+            while line.strip().split() != ['left', 'right', 'times', 'dist']:
+                line = _file.readline().strip()
+
+            line = _file.readline().strip()
+            while line:
+                (left, right, times, dist) = line.split()
+
+                self.spread['left'].append(float(left))
+                self.spread['right'].append(float(right))
+                self.spread['times'].append(float(times))
+                self.spread['dist'].append(float(dist))
+                self.spread['frames'].append(frame)
+
+                frame += 1
+
+                line = _file.readline()
+
+        return None
+
+    def save(self, _path):
+        """Save the spread information to a file at _path."""
+
+        spread = self.spread
+
+        with open(_path, 'w') as _file:
+            # Write general information
+            _file.write('Impact frame: %d\n' % spread['frames'][0])
+            _file.write('Floor: %d\n' % self.floor)
+            _file.write('Min mass: %d\n' % self.min_mass)
+            _file.write('\n')
+
+            # Write header and then fields
+            header = '%8s %8s %8s %8s\n' % ('left', 'right', 'times', 'dist')
+            _file.write(header)
+
+            for i, _ in enumerate(self.spread['frames']):
+                line = ('%8.3f %8.3f %8.3f %8.3f\n'
+                        % (spread['left'][i], spread['right'][i],
+                            spread['times'][i], spread['dist'][i]))
+                _file.write(line)
+
+            return None
 
     def times(self, **kwargs):
         """
@@ -109,19 +278,21 @@ class Spread(object):
         if kwargs.pop('relative', False):
             start = self.spread['frames'][0]
 
-        delta_t = kwargs.pop('delta_t', None)
-        if not delta_t:
-            delta_t = self.system.delta_t
+        self.delta_t = kwargs.pop('delta_t', None)
+        if not self.delta_t:
+            self.delta_t = self.system.delta_t
+
+        self.spread['times'] = []
 
         try:
             for frame in self.spread['frames']:
-                self.spread['times'].append(delta_t * (frame - start))
+                self.spread['times'].append(self.delta_t * (frame - start))
         except TypeError:
             print("'delta_t' not in self.system.delta_t or submitted.")
 
         return None
 
-    def _add(self, _edges, num, datamap):
+    def _add(self, _edges, num, datamap, dist):
         """Add edges of droplet to spread."""
 
         # Add datamap number
@@ -134,6 +305,12 @@ class Spread(object):
         size = datamap._info['cells']['size']['X']
         self.spread['left'].append(datamap.x(_edges[0]) - size/2)
         self.spread['right'].append(datamap.x(_edges[1]) + size/2)
+
+        # If distance demanded, add
+        if dist:
+            com = datamap.com.get('Y')
+            floor = datamap.y(self.system.floor)
+            self.spread['dist'].append(com - floor)
 
         return None
 
@@ -169,8 +346,3 @@ def edges(datamap, **kwargs):
             _edges = [left, right]
 
     return _edges
-
-@draw
-def plot(spread):
-    plt.plot(spread.spread['times'], spread.spread['left'])
-    return None
