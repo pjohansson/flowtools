@@ -16,6 +16,7 @@ from flowtools.draw import draw
 import itertools
 import math
 import numpy as np
+import os
 import pylab as plt
 
 class Spread(object):
@@ -262,9 +263,11 @@ class System(object):
     initial datamaps and 'delta_t' for difference in time between maps.
 
     Methods:
+        base - a base file name
         datamaps - an array of file names of DataMaps.
         delta_t - the difference in time between DataMaps
         droplet_columns - an option for DataMap.droplet
+        files - create file names from a base
         floor - the collective floor of the system
         info - collective information of the system
         min_mass - an option for DataMap.droplet
@@ -274,11 +277,57 @@ class System(object):
     """
 
     def __init__(self, **kwargs):
+        self.base = kwargs.pop('base', None)
+
         self.datamaps = kwargs.pop('datamaps', [])
         self.delta_t = kwargs.pop('delta_t', 0.)
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', 0.)
         self._droplet_columns = kwargs.pop('columns', 1)
+
+        return None
+
+    def files(self, **kwargs):
+        """
+        Construct file names for self.datamaps from self.base and frame
+        numbers for start and end. These default to 1 and Infinity,
+        meaning that all matches with the provided base will be included.
+
+        Keywords:
+            base - set a new base file name
+            ext - an extension for the file name, defaults to '.dat'
+            numdigits - the number of digits included in frame number for
+                file names, defaults to 5
+            start - frame number to start from
+            end - frame number to end with
+
+        """
+
+        def create(base, frame, numdigits, ext):
+            # Create variable-digits string
+            num = ('%%0%dd' % numdigits) % frame
+            return '%s%s%s' % (base, num, ext)
+
+        self.base = kwargs.pop('base', self.base)
+        if self.base == None:
+            raise KeyError("self.base not set")
+
+        self.datamaps = []
+
+        ext = kwargs.pop('ext', '.dat')
+        numdigits = kwargs.pop('numdigits', 5)
+
+        self._end = kwargs.pop('end', np.inf)
+        self._start = kwargs.pop('start', 1)
+
+        frame = self._start
+        filename = create(self.base, frame, numdigits, ext)
+
+        while os.path.exists(filename) and frame <= self._end:
+            self.datamaps.append(filename)
+
+            frame += 1
+            filename = create(self.base, frame, numdigits, ext)
 
         return None
 
@@ -1048,18 +1097,3 @@ class DataMap(object):
         plot(x = x, y = y, u = u, v = v, t = t, **kwargs)
 
         return None
-
-def create_filenames(basename, numbers, ext='.dat'):
-    """
-    Create and return densmaps array from a base filename and
-    a list of numbers.
-
-    An extension can be given as the final argument, it defaults to '.dat'.
-
-    """
-
-    datamaps = []
-    for i in numbers:
-        datamaps.append('%s%05d%s' % (basename, i, ext))
-
-    return datamaps
