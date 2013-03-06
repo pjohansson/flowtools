@@ -204,7 +204,7 @@ class Spread(object):
             _file.write(header)
 
             for i, _ in enumerate(self.frames):
-                line = ("%8.3f %8.3f %8.3f %8.3f %8d %8.3f %8.3f\n"
+                line = ("%9.3f %9.3f %9.3f %9.3f %9d %9.3f %9.3f\n"
                         % (
                             self.left[i], self.right[i],
                             self.com['left'][i], self.com['right'][i],
@@ -323,7 +323,7 @@ class System(object):
         frame = self._start
         filename = create(self.base, frame, numdigits, ext)
 
-        while os.path.exists(filename) and frame <= self._end:
+        while os.path.isfile(filename) and frame <= self._end:
             self.datamaps.append(filename)
 
             frame += 1
