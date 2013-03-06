@@ -2,9 +2,9 @@
 Classes and tools for data maps.
 
 Classes:
-    DataMap - a single data map.
-    Spread - the spreading of a System
-    System - a set of DataMap objects.
+    DataMap - a single data map
+    Spread - the spreading of a System object
+    System - a set of DataMap objects
 
 Functions:
     create_filenames - creates file names for System.
@@ -35,6 +35,7 @@ class Spread(object):
         impact - the impact frame of the system
 
     Methods:
+        plot - draw the spreading
         read - read spreading information from a file
         save - save spreading information to a file
         times - recalculate the times using a supplied delta_t
@@ -75,7 +76,6 @@ class Spread(object):
                 number
             times - True or False (default) to draw as a function of time
             Others as for draw.draw
-
 
         """
 
@@ -329,21 +329,21 @@ class System(object):
 
         """
 
-        def collect(edges, floor, delta_t, com, datamap):
+        def collect(edges, floor, delta_t, com_impact, datamap):
             """
             Collect frame information into dictionary for Spread
             object.
 
             """
-
+            com_current = datamap.com
             frame = {
                     'left': edges['left'], 'right': edges['right'],
                     'com': {
-                        'left': edges['left'] - com['X'],
-                        'right': edges['right'] - com['X']
+                        'left': edges['left'] - com_impact['X'],
+                        'right': edges['right'] - com_impact['X']
                         },
                     'frame': i, 'time': i * delta_t,
-                    'dist': com['Y'] - datamap.y(floor)
+                    'dist': com_current['Y'] - datamap.y(floor)
                     }
 
             return frame
@@ -409,7 +409,8 @@ class System(object):
             if edges:
                 # At impact, get center of mass
                 if self._spread.impact == None:
-                    com_impact = datamap.com
+                    # com_impact = datamap.com
+                    com_impact = DataMap(_file).com
 
                 frame = collect(
                         edges, self.floor, self.delta_t, com_impact, datamap
