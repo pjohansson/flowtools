@@ -74,8 +74,7 @@ class Spread(object):
         for i, _file in enumerate(self.system.datamaps):
             if _print:
                 print("\bReading '%s' (%d of %d)"
-                        % (_file, i + 1, len(self.system.datamaps)),
-                        end = '')
+                        % (_file, i + 1, len(self.system.datamaps)))
 
             datamap = DataMap(_file, min_mass = self.min_mass)
             _edges = edges(datamap, floor = self.floor,
