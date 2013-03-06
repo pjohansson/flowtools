@@ -7,14 +7,17 @@ def draw(func):
         # Read options
         axis = kwargs.pop('axis', 'scaled')
         colorbar = kwargs.pop('colorbar', False)
+        dpi = kwargs.pop('dpi', 150)
+        fig = kwargs.pop('figure', False)
         legend = kwargs.pop('legend', False)
         save = kwargs.pop('save', '')
         show = kwargs.pop('show', False)
         xlim = kwargs.pop('xlim', None)
         ylim = kwargs.pop('ylim', None)
 
-        # Open figure
-        plt.figure()
+        # If new figure demanded
+        if fig:
+            plt.figure()
 
         # Labels
         plt.xlabel(kwargs.pop('xlabel', 'Position (nm)'))
@@ -41,5 +44,6 @@ def draw(func):
 
         # Save
         if save:
-            plt.savefig(save)
+            plt.savefig(save, dpi = dpi)
+
     return wrapper

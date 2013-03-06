@@ -10,8 +10,12 @@ Functions:
 
 """
 
+from flowtools.draw import draw
+
+import itertools
 import math
 import numpy as np
+import pylab as plt
 
 class System(object):
     """
@@ -36,7 +40,7 @@ class System(object):
 
     def __init__(self, **kwargs):
         self.datamaps = kwargs.pop('datamaps', [])
-        self.delta_t = kwargs.pop('delta_t', None)
+        self.delta_t = kwargs.pop('delta_t', 0)
         self.droplet_columns = kwargs.pop('columns', 1)
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', 0.)
@@ -174,7 +178,7 @@ class DataMap(object):
                     # Add if 'droplet'
                     if cell['droplet']:
                         _com['X'] += cell['X'] * cell['M']
-                        _com['Y'] += cell['Y'] * cell['Y']
+                        _com['Y'] += cell['Y'] * cell['M']
                         _mass += cell['M']
 
                 # Average over mass
@@ -372,9 +376,9 @@ class DataMap(object):
         columns = kwargs.pop('columns', 1)
 
         # Call controllers in order
-        self._flow()
-        self._min_mass(min_mass = min_mass)
-        self._inside(columns = columns)
+        self._cells_flow()
+        self._cells_min_mass(min_mass = min_mass)
+        self._cells_inside(columns = columns)
 
         return None
 
@@ -452,7 +456,7 @@ class DataMap(object):
         return wrapper
 
     @__cells_droplet
-    def _flow(cell, **kwargs):
+    def _cells_flow(cell, **kwargs):
         """
         Check if a cell contains any flow, decorated to check entire system.
 
@@ -461,7 +465,7 @@ class DataMap(object):
         return cell['U'] or cell['V']
 
     @__cells_droplet
-    def _min_mass(cell, **kwargs):
+    def _cells_min_mass(cell, **kwargs):
         """
         Check if cell contains mass above an input minimum, decorated to
         check entire system.
@@ -474,7 +478,7 @@ class DataMap(object):
         return cell['M'] >= kwargs.get('min_mass', 0.)
 
     @__cells_droplet
-    def _inside(cells, pos, **kwargs):
+    def _cells_inside(cells, pos, **kwargs):
         """
         Check if cell at position pos is well connected to other droplet
         cells, by going over a set of cells in columns around the considered,
@@ -579,9 +583,144 @@ class DataMap(object):
         self.cells = self.cells.transpose()
         return None
 
-def create_filenames(system, basename, numbers, ext='.dat'):
+
+    def dens(self, **kwargs):
+        """
+        Draw the density map of the data map.
+
+        Keywords:
+            min_frac - a minimum fraction to include
+            min_mass - a minimum mass to include.
+            norm - a mass value which will be set as '1' in the plot.
+            Others as for hist2d.
+
+        """
+
+        @draw
+        def plot(**kwargs):
+            """Plot maps using hist2d."""
+
+            x = kwargs.pop('x', [])
+            y = kwargs.pop('y', [])
+            mass = kwargs.pop('mass', [])
+
+            # Get bins from system
+            num_cells = list(self._info['cells']['num_cells'].values())
+            num_cells.reverse()
+
+            # Get minimum to draw, prioritise fraction
+            min_frac = kwargs.pop('min_mass')
+            if 'min_frac' in kwargs:
+                min_frac = kwargs.pop('min_frac', 0.)
+
+            plt.hist2d(
+                    x, y, weights = mass,
+                    bins = num_cells,
+                    cmin = min_frac,
+                    **kwargs)
+
+            return None
+
+        min_mass = kwargs.setdefault('min_mass', 0.)
+
+        # Collect 'droplet' cells into arrays
+        x = []
+        y = []
+        mass = []
+
+        for row in self.cells:
+            for cell in row:
+                x.append(cell['X'])
+                y.append(cell['Y'])
+                if cell['droplet'] and cell['M'] >= min_mass:
+                    mass.append(cell['M'])
+                else:
+                    mass.append(-1.)
+
+        # Get and apply density normalising
+        norm = kwargs.pop('norm', max(mass))
+        min_mass /= norm
+        for i, _ in enumerate(mass):
+            mass[i] /= norm
+
+        kwargs.update({'x': x})
+        kwargs.update({'y': y})
+        kwargs.update({'mass': mass})
+
+        plot(**kwargs)
+
+        return None
+
+    def flow(self, **kwargs):
+        """
+        Draw flow fields of the system using quiver.
+
+        Can colour the quiver arrows by the cell temperature by supplying
+        temp = True.
+
+        Keywords:
+            color - color the arrows.
+            min_mass - include only cells with a minimum mass.
+            temp - color quiver arrows by their temperature.
+            xlim, ylim - cut the plot view.
+            Others as for quiver.
+
+        """
+
+        @draw
+        def plot(**kwargs):
+            """Draw a quiver field of vectors."""
+
+            x = kwargs.pop('x')
+            y = kwargs.pop('y')
+            u = kwargs.pop('u')
+            v = kwargs.pop('v')
+            t = kwargs.pop('t')
+
+            if kwargs.pop('temp', False):
+                plt.quiver(x, y, u, v, t, **kwargs)
+            else:
+                plt.quiver(x, y, u, v, **kwargs)
+
+            return None
+
+        # Fill in cell values
+        x = []
+        y = []
+        u = []
+        v = []
+        t = []
+
+        min_mass = kwargs.pop('min_mass', 0.)
+
+        for row in self.cells:
+            for cell in row:
+                if cell['droplet'] and cell['M'] >= min_mass:
+                    x.append(cell['X'])
+                    y.append(cell['Y'])
+                    u.append(cell['U'])
+                    v.append(cell['V'])
+                    t.append(cell['T'])
+
+        # Set some defaults if not input
+        kwargs.update({
+            'xlim': kwargs.pop('xlim', self._info['size']['X']),
+            'ylim': kwargs.pop('ylim', self._info['size']['Y']),
+            'color': kwargs.pop('color', 'blue'),
+            'title': kwargs.pop('title', 'Flow of droplet on substrate')
+            })
+
+        # If temperature, default to colorbar
+        if kwargs.get('temp', False):
+            kwargs.setdefault('colorbar', True)
+
+        plot(x = x, y = y, u = u, v = v, t = t, **kwargs)
+
+        return None
+
+def create_filenames(basename, numbers, ext='.dat'):
     """
-    Create and save system.densmaps array from a base filename and
+    Create and return densmaps array from a base filename and
     a list of numbers.
 
     An extension can be given as the final argument, it defaults to '.dat'.
@@ -591,6 +730,5 @@ def create_filenames(system, basename, numbers, ext='.dat'):
     datamaps = []
     for i in numbers:
         datamaps.append('%s%05d%s' % (basename, i, ext))
-    system.datamaps = datamaps
 
-    return None
+    return datamaps
