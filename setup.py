@@ -3,9 +3,12 @@
 from distutils.core import setup
 
 setup(
-        name='Flowtools',
+        name="Flowtools",
         description="Tools for flow maps from modified Gromacs simulations",
-        version='0.1',
+        long_description="See README.md",
+        license='GPLv3',
+        version='0.1.1',
+        url="https://github.com/pjohansson/flowtools",
         author="Petter Johansson",
         author_email="petter.johansson@scilifelab.se",
         packages=['flowtools'],

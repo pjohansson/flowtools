@@ -2,17 +2,6 @@ flowtools
 =========
 Scripts and modules in Python for working with data maps from simulations.
 
-# Tools
-The suite consists of Modules for handling data and Scripts for running them.
-
-## Modules
-* draw - a decorator for creating figures
-* datamaps - classes for handling and drawing data maps
-
-## Scripts
-* collect_spread - collect the spread of a droplet on a substrate
-* combine_spread - combines and averages spread data
-
 # Installation
 The tools are written for Python 3.3.
 
@@ -25,6 +14,17 @@ The tools are written for Python 3.3.
 
 ## Instructions
     $ python setup.py install
+
+# Tools
+The suite consists of Modules for handling data and Scripts for running them.
+
+## Modules
+* draw - a decorator for creating figures
+* datamaps - classes for handling and drawing data maps
+
+## Scripts
+* collect_spread - collect the spread of a droplet on a substrate
+* combine_spread - combines and averages spread data
 
 # Data format
 The data that these tools work on come from a specific output format from my
@@ -46,3 +46,7 @@ positions in each line.
 ### Output
 Currently output is made in plaintext, plans exist to switch to a binary format
 for efficiency reasons.
+
+# License
+The suite is licensed under the GNU General Public License v3. See LICENSE
+for details.
