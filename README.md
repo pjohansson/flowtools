@@ -6,11 +6,11 @@ Scripts and modules in Python for working with data maps from simulations.
 The tools are written for Python 3.3.
 
 ## Requirements
-* Python => 3.3
-* numpy => 1.7.0
-* scipy => 0.11.0
-* pylab => 1.2.0
-* pandas => 0.10.1
+* Python >= 3.3
+* matplotlib >= 1.2.0
+* numpy >= 1.7.0
+* pandas >= 0.10.1
+* scipy >= 0.11.0
 
 ## Instructions
     $ python setup.py install
