@@ -531,7 +531,9 @@ class DataMap(object):
     Methods:
         com - get the center of mass of the system
         cut - return a new DataMap with cells inside a specified cut
+        dens - plot the density field of the map
         droplet - mark cells as 'droplet' or not depending on conditions
+        flow - plot flow fields of the map
         fields - get the fields of the droplet
         floor - get the lowest row of the system with 'droplet' cells
         info - get information from the DataMap
@@ -764,6 +766,73 @@ class DataMap(object):
         data_map._info = data_map.info
         return data_map
 
+    def dens(self, **kwargs):
+        """
+        Draw the density map of the data map.
+
+        Keywords:
+            min_frac - a minimum fraction to include
+            min_mass - a minimum mass to include.
+            norm - a mass value which will be set as '1' in the plot.
+            Others as for hist2d.
+
+        """
+
+        @draw
+        def plot(**kwargs):
+            """Plot maps using hist2d."""
+
+            x = kwargs.pop('x', [])
+            y = kwargs.pop('y', [])
+            mass = kwargs.pop('mass', [])
+
+            # Get bins from system
+            num_cells = list(self._info['cells']['num_cells'].values())
+            num_cells.reverse()
+
+            # Get minimum to draw, prioritise fraction
+            min_frac = kwargs.pop('min_mass')
+            if 'min_frac' in kwargs:
+                min_frac = kwargs.pop('min_frac', 0.)
+
+            plt.hist2d(
+                    x, y, weights = mass,
+                    bins = num_cells,
+                    cmin = min_frac,
+                    **kwargs)
+
+            return None
+
+        min_mass = kwargs.setdefault('min_mass', 0.)
+
+        # Collect 'droplet' cells into arrays
+        x = []
+        y = []
+        mass = []
+
+        for row in self.cells:
+            for cell in row:
+                x.append(cell['X'])
+                y.append(cell['Y'])
+                if cell['droplet'] and cell['M'] >= min_mass:
+                    mass.append(cell['M'])
+                else:
+                    mass.append(-1.)
+
+        # Get and apply density normalising
+        norm = kwargs.pop('norm', max(mass))
+        min_mass /= norm
+        for i, _ in enumerate(mass):
+            mass[i] /= norm
+
+        kwargs.update({'x': x})
+        kwargs.update({'y': y})
+        kwargs.update({'mass': mass})
+
+        plot(**kwargs)
+
+        return None
+
     def droplet(self, **kwargs):
         """
         Check entire system for droplet cells, flagging 'droplet' as
@@ -796,6 +865,73 @@ class DataMap(object):
         self._cells_flow()
         self._cells_min_mass(min_mass = min_mass)
         self._cells_inside(columns = columns)
+
+        return None
+
+    def flow(self, **kwargs):
+        """
+        Draw flow fields of the system using quiver.
+
+        Can colour the quiver arrows by the cell temperature by supplying
+        temp = True.
+
+        Keywords:
+            color - color the arrows.
+            min_mass - include only cells with a minimum mass.
+            temp - color quiver arrows by their temperature.
+            xlim, ylim - cut the plot view.
+            Others as for quiver.
+
+        """
+
+        @draw
+        def plot(**kwargs):
+            """Draw a quiver field of vectors."""
+
+            x = kwargs.pop('x')
+            y = kwargs.pop('y')
+            u = kwargs.pop('u')
+            v = kwargs.pop('v')
+            t = kwargs.pop('t')
+
+            if kwargs.pop('temp', False):
+                plt.quiver(x, y, u, v, t, **kwargs)
+            else:
+                plt.quiver(x, y, u, v, **kwargs)
+
+            return None
+
+        # Fill in cell values
+        x = []
+        y = []
+        u = []
+        v = []
+        t = []
+
+        min_mass = kwargs.pop('min_mass', 0.)
+
+        for row in self.cells:
+            for cell in row:
+                if cell['droplet'] and cell['M'] >= min_mass:
+                    x.append(cell['X'])
+                    y.append(cell['Y'])
+                    u.append(cell['U'])
+                    v.append(cell['V'])
+                    t.append(cell['T'])
+
+        # Set some defaults if not input
+        kwargs.update({
+            'xlim': kwargs.pop('xlim', self._info['size']['X']),
+            'ylim': kwargs.pop('ylim', self._info['size']['Y']),
+            'color': kwargs.pop('color', 'blue'),
+            'title': kwargs.pop('title', 'Flow of droplet on substrate')
+            })
+
+        # If temperature, default to colorbar
+        if kwargs.get('temp', False):
+            kwargs.setdefault('colorbar', True)
+
+        plot(x = x, y = y, u = u, v = v, t = t, **kwargs)
 
         return None
 
@@ -1000,137 +1136,3 @@ class DataMap(object):
         self.cells = self.cells.transpose()
         return None
 
-
-    def dens(self, **kwargs):
-        """
-        Draw the density map of the data map.
-
-        Keywords:
-            min_frac - a minimum fraction to include
-            min_mass - a minimum mass to include.
-            norm - a mass value which will be set as '1' in the plot.
-            Others as for hist2d.
-
-        """
-
-        @draw
-        def plot(**kwargs):
-            """Plot maps using hist2d."""
-
-            x = kwargs.pop('x', [])
-            y = kwargs.pop('y', [])
-            mass = kwargs.pop('mass', [])
-
-            # Get bins from system
-            num_cells = list(self._info['cells']['num_cells'].values())
-            num_cells.reverse()
-
-            # Get minimum to draw, prioritise fraction
-            min_frac = kwargs.pop('min_mass')
-            if 'min_frac' in kwargs:
-                min_frac = kwargs.pop('min_frac', 0.)
-
-            plt.hist2d(
-                    x, y, weights = mass,
-                    bins = num_cells,
-                    cmin = min_frac,
-                    **kwargs)
-
-            return None
-
-        min_mass = kwargs.setdefault('min_mass', 0.)
-
-        # Collect 'droplet' cells into arrays
-        x = []
-        y = []
-        mass = []
-
-        for row in self.cells:
-            for cell in row:
-                x.append(cell['X'])
-                y.append(cell['Y'])
-                if cell['droplet'] and cell['M'] >= min_mass:
-                    mass.append(cell['M'])
-                else:
-                    mass.append(-1.)
-
-        # Get and apply density normalising
-        norm = kwargs.pop('norm', max(mass))
-        min_mass /= norm
-        for i, _ in enumerate(mass):
-            mass[i] /= norm
-
-        kwargs.update({'x': x})
-        kwargs.update({'y': y})
-        kwargs.update({'mass': mass})
-
-        plot(**kwargs)
-
-        return None
-
-    def flow(self, **kwargs):
-        """
-        Draw flow fields of the system using quiver.
-
-        Can colour the quiver arrows by the cell temperature by supplying
-        temp = True.
-
-        Keywords:
-            color - color the arrows.
-            min_mass - include only cells with a minimum mass.
-            temp - color quiver arrows by their temperature.
-            xlim, ylim - cut the plot view.
-            Others as for quiver.
-
-        """
-
-        @draw
-        def plot(**kwargs):
-            """Draw a quiver field of vectors."""
-
-            x = kwargs.pop('x')
-            y = kwargs.pop('y')
-            u = kwargs.pop('u')
-            v = kwargs.pop('v')
-            t = kwargs.pop('t')
-
-            if kwargs.pop('temp', False):
-                plt.quiver(x, y, u, v, t, **kwargs)
-            else:
-                plt.quiver(x, y, u, v, **kwargs)
-
-            return None
-
-        # Fill in cell values
-        x = []
-        y = []
-        u = []
-        v = []
-        t = []
-
-        min_mass = kwargs.pop('min_mass', 0.)
-
-        for row in self.cells:
-            for cell in row:
-                if cell['droplet'] and cell['M'] >= min_mass:
-                    x.append(cell['X'])
-                    y.append(cell['Y'])
-                    u.append(cell['U'])
-                    v.append(cell['V'])
-                    t.append(cell['T'])
-
-        # Set some defaults if not input
-        kwargs.update({
-            'xlim': kwargs.pop('xlim', self._info['size']['X']),
-            'ylim': kwargs.pop('ylim', self._info['size']['Y']),
-            'color': kwargs.pop('color', 'blue'),
-            'title': kwargs.pop('title', 'Flow of droplet on substrate')
-            })
-
-        # If temperature, default to colorbar
-        if kwargs.get('temp', False):
-            kwargs.setdefault('colorbar', True)
-
-        plot(x = x, y = y, u = u, v = v, t = t, **kwargs)
-
-        return None
