@@ -327,6 +327,9 @@ class System(object):
         numbers for start and end. These default to 1 and Infinity,
         meaning that all matches with the provided base will be included.
 
+        Verifies that all files within specified frames exist, only creates
+        file names for those.
+
         Keywords:
             base - set a new base file name
             ext - an extension for the file name, defaults to '.dat'
@@ -545,7 +548,7 @@ class DataMap(object):
 
     """
 
-    def __init__(self, _path, **kwargs):
+    def __init__(self, _path=None, **kwargs):
         self.fields = kwargs.pop('fields', 'all')
         self.path = _path
 
@@ -1128,7 +1131,7 @@ class DataMap(object):
     def _grid(self):
         """Rearrange data map cells into 2d numpy array."""
 
-        _info = self._info
+        _info = self.info
         self.cells.resize(
                 _info['cells']['num_cells']['X'],
                 _info['cells']['num_cells']['Y']

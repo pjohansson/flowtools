@@ -15,5 +15,5 @@ setup(
         requires=[
             'numpy (>=1.7.0)', 'matplotlib (>=1.2.0)', 'scipy (>=0.11.0)'
             ],
-        scripts=['scripts/collect_spread.py']
+        scripts=['scripts/collect_spread.py', 'scripts/combine_maps.py']
         )
