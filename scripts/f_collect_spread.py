@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Flowtools - a suite of tools for handling and drawing flow data
 # Copyright (C) 2013 Petter Johansson

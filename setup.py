@@ -18,8 +18,8 @@ setup(
             'scipy (>=0.11.0)'
             ],
         scripts=[
-            'scripts/collect_spread.py',
-            'scripts/combine_maps.py',
+            'scripts/f_collect_spread.py',
+            'scripts/f_combine_maps.py',
             'scripts/f_flowmaps.py'
             ]
         )
