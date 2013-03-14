@@ -62,12 +62,15 @@ def draw(func):
         if colorbar:
             plt.colorbar()
 
+        # Save
+        if save:
+            plt.savefig(save, dpi = dpi)
+
         # Show
         if show:
             plt.show()
 
-        # Save
         if save:
-            plt.savefig(save, dpi = dpi)
+            plt.clf()
 
     return wrapper
