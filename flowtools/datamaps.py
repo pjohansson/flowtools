@@ -164,14 +164,14 @@ class Spread(object):
             # Read general information until Spreading
             line = _file.readline().strip()
 
-            while not line.startswith('Spread:'):
-                if line.startswith('Floor'):
+            while not line.lower().startswith('spread:'):
+                if line.lower().startswith('floor'):
                     self.floor = int(line.split(':')[-1])
 
-                if line.startswith('Min mass'):
+                if line.lower().startswith('min mass'):
                     self.min_mass = float(line.split(':')[-1])
 
-                if line.startswith('delta_t'):
+                if line.lower().startswith('delta_t'):
                     self.delta_t = float(line.split(':')[-1])
 
                 line = _file.readline().strip()
