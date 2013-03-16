@@ -250,14 +250,6 @@ class Spread(object):
 
             return None
 
-    def times(self, delta_t):
-        """Recalculate self.times for a different delta_t."""
-
-        for i, frame in enumerate(self.frames):
-            self.times[i] = frame * delta_t
-
-        return None
-
     def _add(self, frame):
         """Add a frame of spreading."""
 
