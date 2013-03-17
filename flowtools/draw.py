@@ -33,6 +33,8 @@ def draw(func):
         colorbar = kwargs.pop('colorbar', False)
         dpi = kwargs.pop('dpi', 150)
         fig = kwargs.pop('figure', False)
+        invert_x = kwargs.pop('invert_x', False)
+        invert_y = kwargs.pop('invert_y', False)
         legend = kwargs.pop('legend', False)
         save = kwargs.pop('save', '')
         show = kwargs.pop('show', False)
@@ -55,6 +57,12 @@ def draw(func):
         plt.axis(axis)
         plt.xlim(xlim)
         plt.ylim(ylim)
+
+        # Invert axises
+        if invert_x:
+            plt.gca().invert_xaxis()
+        if invert_y:
+            plt.gca().invert_yaxis()
 
         # Decorating options
         if legend:

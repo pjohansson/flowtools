@@ -60,14 +60,72 @@ class Spread(object):
     """
 
     def __init__(self, **kwargs):
-        self._reset()
-
+        self.base = kwargs.pop('base', None)
         self.delta_t = kwargs.pop('delta_t', None)
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', None)
-        self.base = kwargs.pop('base', None)
+
+        self.spread = {
+                'left': {'com': [], 'abs': [], 'std': []},
+                'right': {'com': [], 'abs': [], 'std': []},
+                'dist': {'val': [], 'std': []},
+                'frames': {'val': [], 'std': []},
+                'times': {'val': [], 'std': []}
+                }
 
         return None
+
+    @property
+    def left(self):
+        return self.spread['left']['abs']
+
+    @left.setter
+    def left(self, _list):
+        self.spread['left']['abs'] = _list
+
+    @property
+    def right(self):
+        return self.spread['right']['abs']
+
+    @right.setter
+    def right(self, _list):
+        self.spread['right']['abs'] = _list
+
+    @property
+    def com(self):
+        return {
+                'left': self.spread['left']['com'],
+                'right': self.spread['right']['com']
+                }
+
+    @com.setter
+    def com(self, _dict):
+        self.spread['left']['com'] = _dict['left']
+        self.spread['right']['com'] = _dict['right']
+
+    @property
+    def dist(self):
+        return self.spread['dist']['val']
+
+    @dist.setter
+    def dist(self, _list):
+        self.spread['dist']['val'] = _list
+
+    @property
+    def frames(self):
+        return self.spread['frames']['val']
+
+    @frames.setter
+    def frames(self, _list):
+        self.spread['frames']['val'] = _list
+
+    @property
+    def times(self):
+        return self.spread['times']['val']
+
+    @times.setter
+    def times(self, _list):
+        self.spread['times']['val'] = _list
 
     @property
     def impact(self):
@@ -124,20 +182,19 @@ class Spread(object):
 
         kwargs.update({'spread': spread})
         kwargs.update({'figure': False})
+        kwargs.setdefault('axis', 'normal')
         kwargs.setdefault('ylabel', 'Positions (nm)')
         kwargs.setdefault('title', 'Spreading of droplet on substrate')
 
         if times and self.times:
             kwargs.update({'x': self.times})
             kwargs.setdefault('xlabel', 'Time (ps)')
-            kwargs.setdefault('axis', 'equal')
 
             plot_lines(**kwargs)
 
         elif frames and self.frames:
             kwargs.update({'x': self.frames})
             kwargs.setdefault('xlabel', 'Frame')
-            kwargs.setdefault('axis', 'equal')
 
             plot_lines(**kwargs)
 
@@ -146,12 +203,11 @@ class Spread(object):
             kwargs.setdefault(
                     'xlabel', 'Distance from substrate to center of mass (nm)'
                     )
-            kwargs.setdefault('axis', 'normal')
+            kwargs.setdefault('invert_x', True)
 
             plot_lines(**kwargs)
 
             # Invert x axis for distance
-            plt.gca().invert_xaxis()
 
         return None
 
@@ -222,9 +278,6 @@ class Spread(object):
                         )
                     )
 
-            if self.error['left'] and self.error['right']:
-                header += ' %9s %9s' % ('err_left', 'err_right')
-
             header += '\n'
             _file.write(header)
 
@@ -238,12 +291,6 @@ class Spread(object):
                             self.dist[i]
                             )
                         )
-
-                if self.error['left'] and self.error['right']:
-                    line += (
-                            " %9.3f %9.3f"
-                            % (self.error['left'][i], self.error['right'][i])
-                            )
 
                 line += '\n'
                 _file.write(line)
@@ -273,7 +320,6 @@ class Spread(object):
         self.right = []
         self.com = {'left': [], 'right': []}
         self.dist = []
-        self.error = {'left': [], 'right': []}
         self.frames = []
         self.times = []
 

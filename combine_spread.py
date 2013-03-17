@@ -64,7 +64,8 @@ impact_time = np.array(impact_list).mean()
 min_mass = max(min_mass_list)
 variables = {
         'left': left, 'right': right,
-        'com_left': com_left, 'com_right': com_right, 'dist': dist
+        'com_left': com_left, 'com_right': com_right,
+        'dist': dist
         }
 
 for var, series_data in variables.items():
@@ -77,24 +78,24 @@ for var, series_data in variables.items():
     variables[var] = DataFrame(series_data).dropna(0)
 
     # Take mean and get standard deviation
-    mean, std = variables[var].mean(1), variables[var].std(1)
+    mean = variables[var].mean(1)
+    std = np.sqrt((variables[var].sub(mean, axis='index')**2).mean(1))
     variables[var]['mean'] = mean
     variables[var]['std'] = std
 
-# Add to new Spread data
 delta_t = variables['left'].index[1] - variables['left'].index[0]
+
 spread = Spread(delta_t = delta_t, min_mass = min_mass)
 
 spread.left = variables['left']['mean'].tolist()
+spread.spread['left']['com'] = variables['com_left']['mean'].tolist()
+spread.spread['left']['std'] = variables['left']['std'].tolist()
 spread.right = variables['right']['mean'].tolist()
-spread.com['left'] = variables['com_left']['mean'].tolist()
-spread.com['right'] = variables['com_right']['mean'].tolist()
-spread.dist = variables['dist']['mean'].tolist()
+spread.spread['right']['com'] = variables['com_right']['mean'].tolist()
+spread.spread['right']['std'] = variables['right']['std'].tolist()
 
+spread.dist = variables['dist']['mean'].tolist()
 spread.times = list(variables['left'].index)
 spread.frames = list(map(int, variables['left'].index / delta_t))
 
-print(len(spread.times), len(spread.left))
-
-spread.plot(times = True, show = True, axis = 'normal')
-
+spread.plot(show = True, dist = True)
