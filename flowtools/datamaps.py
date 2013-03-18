@@ -158,15 +158,29 @@ class Spread(object):
         def plot_lines(**kwargs):
             """Plot the spread as a function of supplied list."""
 
+
             spread = kwargs.pop('spread')
             x = kwargs.pop('x')
 
             kwargs.setdefault('color', 'blue')
             label = kwargs.pop('label', '_nolegend_')
+            error = kwargs.pop('error', False)
+            error_label = kwargs.pop('error_label', '__nolegend__')
 
             plt.plot(x, spread['left'], label = label, **kwargs)
             plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
                     **kwargs)
+
+            if error:
+                plt.plot(x, spread['error']['left']['up'],
+                        hold = True, linestyle = 'dashed',
+                        label = error_label, **kwargs)
+                plt.plot(x, spread['error']['left']['down'],
+                        hold = True, linestyle = 'dashed', **kwargs)
+                plt.plot(x, spread['error']['right']['up'],
+                        hold = True, linestyle = 'dashed', **kwargs)
+                plt.plot(x, spread['error']['right']['down'],
+                        hold = True, linestyle = 'dashed', **kwargs)
 
             return None
 
@@ -174,11 +188,30 @@ class Spread(object):
         frames = kwargs.pop('frames', False)
         dist = kwargs.pop('dist', False)
 
+        error = kwargs.get('error', False)
+        sigma = kwargs.pop('sigma', 1)
+
         # By default use spread around com
         if kwargs.pop('com', True):
             spread = {'left': self.com['left'], 'right': self.com['right']}
         else:
             spread = {'left': self.left, 'right': self.right}
+
+        if error:
+            spread['error'] = {
+                    'left': {
+                        'up': list(np.array(spread['left'])
+                            + np.array(self.spread['left']['std']) * sigma),
+                        'down': list(np.array(spread['left'])
+                            - np.array(self.spread['left']['std']) * sigma)
+                        },
+                    'right': {
+                        'up': list(np.array(spread['right'])
+                            + np.array(self.spread['right']['std']) * sigma),
+                        'down': list(np.array(spread['right'])
+                            - np.array(self.spread['right']['std']) * sigma)
+                        }
+                    }
 
         kwargs.update({'spread': spread})
         kwargs.update({'figure': False})
