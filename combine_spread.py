@@ -24,12 +24,13 @@ including the standard deviation.
 
 import argparse
 import numpy as np
+import pylab as plt
 import sys
 
 from flowtools.datamaps import Spread
 from pandas import Series, DataFrame
 
-def combine_spread(args):
+def combine_spread(spread_files):
     """
     Combine the spread of input files, return with mean and standard
     deviation calculated.
@@ -46,7 +47,7 @@ def combine_spread(args):
     dist = {}
 
     # Read spread info from all files into dictionaries
-    for i, _file in enumerate(args.spreading):
+    for i, _file in enumerate(spread_files):
         spread = Spread().read(_file)
 
         # Save curricular data
@@ -100,13 +101,11 @@ def combine_spread(args):
     return spread
 
 if __name__ == '__main__':
+    # Get input files and options
     parser = argparse.ArgumentParser()
-
     parser.add_argument('spreading', nargs='+',
             help="list of spreading data files to combine")
-
     args = parser.parse_args()
 
-    spread = combine_spread(args)
-    spread.plot(show = True, dist = True, error = True, sigma = 2,
-            error_label = '95% CI', legend = True)
+    spread = combine_spread(args.spreading)
+    spread.plot(show = True, dist = True, error = True, legend = True)

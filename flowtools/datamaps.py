@@ -197,6 +197,7 @@ class Spread(object):
         else:
             spread = {'left': self.left, 'right': self.right}
 
+        # If desired add error dictionary
         if error:
             spread['error'] = {
                     'left': {
@@ -236,7 +237,7 @@ class Spread(object):
             kwargs.setdefault(
                     'xlabel', 'Distance from substrate to center of mass (nm)'
                     )
-            kwargs.setdefault('invert_x', True)
+            kwargs.setdefault('invert_x', kwargs.get('invert_x', True))
 
             plot_lines(**kwargs)
 
