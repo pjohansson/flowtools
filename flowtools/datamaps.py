@@ -145,14 +145,43 @@ class Spread(object):
         Keywords:
             com - True (default) or False to draw the spreading around the
                 center of mass of the droplet
-            dist - True or False (default) to draw as a function of
-                distance to center of mass from floor
-            frames - True or False (default) to draw as a function of frame
-                number
-            times - True or False (default) to draw as a function of time
+            relative - True or False (default) to set start of time and frames
+                to impact
+            type - 'times' (default), 'frames' or 'dist' to plot spread as
+                a function of
             Others as for draw.draw
 
         """
+
+        def calc_error(spread, sigma):
+            """Calculate error for given sigma and add to spread dictionary."""
+
+            spread['error'] = {
+                    'left': {
+                        'up': list(np.array(spread['left'])
+                            + np.array(self.spread['left']['std']) * sigma),
+                        'down': list(np.array(spread['left'])
+                            - np.array(self.spread['left']['std']) * sigma)
+                        },
+                    'right': {
+                        'up': list(np.array(spread['right'])
+                            + np.array(self.spread['right']['std']) * sigma),
+                        'down': list(np.array(spread['right'])
+                            - np.array(self.spread['right']['std']) * sigma)
+                        }
+                    }
+            return None
+
+        def make_relative(spread):
+            """Make impact frames and times start at 0."""
+
+            times = np.array(spread['times']) - spread['times'][0]
+            frames = np.array(spread['frames']) - spread['frames'][0]
+
+            spread['times'] = list(times)
+            spread['frames'] = list(frames)
+
+            return None
 
         @draw
         def plot_lines(**kwargs):
@@ -184,11 +213,14 @@ class Spread(object):
 
             return None
 
-        times = kwargs.pop('times', False)
-        frames = kwargs.pop('frames', False)
-        dist = kwargs.pop('dist', False)
+        _type = kwargs.pop('type', 'times')
+        if _type not in ['times', 'dist', 'frames']:
+            raise KeyError(
+                    "function type has to be 'times', 'dist' or 'frames'"
+                    )
 
         error = kwargs.get('error', False)
+        relative = kwargs.pop('relative', False)
         sigma = kwargs.pop('sigma', 1)
 
         # By default use spread around com
@@ -197,22 +229,19 @@ class Spread(object):
         else:
             spread = {'left': self.left, 'right': self.right}
 
+        # Add dist, times and frames
+        spread['times'] = self.times.copy()
+        spread['frames'] = self.frames.copy()
+        spread['dist'] = self.dist.copy()
+
         # If desired add error dictionary
         if error:
-            spread['error'] = {
-                    'left': {
-                        'up': list(np.array(spread['left'])
-                            + np.array(self.spread['left']['std']) * sigma),
-                        'down': list(np.array(spread['left'])
-                            - np.array(self.spread['left']['std']) * sigma)
-                        },
-                    'right': {
-                        'up': list(np.array(spread['right'])
-                            + np.array(self.spread['right']['std']) * sigma),
-                        'down': list(np.array(spread['right'])
-                            - np.array(self.spread['right']['std']) * sigma)
-                        }
-                    }
+            calc_error(spread, sigma)
+
+        # If relative to impact wanted
+        if relative:
+            make_relative(spread)
+            print(spread['times'])
 
         kwargs.update({'spread': spread})
         kwargs.update({'figure': False})
@@ -220,20 +249,20 @@ class Spread(object):
         kwargs.setdefault('ylabel', 'Positions (nm)')
         kwargs.setdefault('title', 'Spreading of droplet on substrate')
 
-        if times and self.times:
-            kwargs.update({'x': self.times})
+        if _type == 'times' and self.times:
+            kwargs.update({'x': spread['times']})
             kwargs.setdefault('xlabel', 'Time (ps)')
 
             plot_lines(**kwargs)
 
-        elif frames and self.frames:
-            kwargs.update({'x': self.frames})
+        elif _type == 'frames' and self.frames:
+            kwargs.update({'x': spread['frames']})
             kwargs.setdefault('xlabel', 'Frame')
 
             plot_lines(**kwargs)
 
-        elif dist and self.dist:
-            kwargs.update({'x': self.dist})
+        elif _type == 'dist' and self.dist:
+            kwargs.update({'x': spread['dist']})
             kwargs.setdefault(
                     'xlabel', 'Distance from substrate to center of mass (nm)'
                     )
