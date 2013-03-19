@@ -105,12 +105,128 @@ def combine_spread(spread_files):
     return spread
 
 if __name__ == '__main__':
+    def get_colours(args):
+        """Create list of colours for lines."""
+
+        colours = args.colour.copy()
+        default = [
+                'blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black'
+                ]
+
+        while len(colours) < len(args.spreading):
+            colours += default
+        colours = colours[:len(args.spreading)]
+
+        return colours
+
+    def get_labels(args):
+        """Create list of labels for legend."""
+
+        labels = args.label.copy()
+
+        default = ['__nolegend__']
+        while len(labels) < len(args.spreading):
+            labels += default
+
+        # Check if legend required
+        if set(labels) == set(['__nolegend__']):
+            legend = False
+        else:
+            legend = True
+
+        return labels, legend
+
     # Get input files and options
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', action='append', nargs='+',
-            help="list of spreading data files to graph")
-    args = parser.parse_args()
-    print(args)
 
-    #spread = combine_spread(args.spreading)
-    #spread.plot(show = True, type = 'frames', error = True, legend = True, relative=True)
+    line = parser.add_argument_group(title="Main")
+    line.add_argument('-f', '--files', dest='spreading', action='append',
+            nargs='+', metavar="FILES", required=True,
+            help="list of spreading data files to graph")
+    line.add_argument('-s', '--save', metavar="PATH",
+            help="optionally save output image to path")
+    line_show = line.add_mutually_exclusive_group()
+    line_show.add_argument('--show', action='store_true', dest='show',
+            default=True,
+            help=("show graph (default: true, --noshow to turn off)"))
+    line_show.add_argument('--noshow', action='store_false', dest='show',
+            help=argparse.SUPPRESS)
+
+    error = parser.add_argument_group(title="Error",
+            description="options for error of data")
+    error_group = error.add_mutually_exclusive_group()
+    error_group.add_argument('--error', action='store_true', dest='error',
+            default=True,
+            help=("show error for lines if multiple files entered "
+                    "(default: true, --noerror to turn off)"))
+    error_group.add_argument('--noerror', action='store_false', dest='error',
+            help=argparse.SUPPRESS)
+    error.add_argument('--sigma', type=float, default=1.,
+            help="number of standard deviations from mean, or Z-score, "
+                    "for error lines (default: 1)")
+
+    # Decoration options
+    decoration = parser.add_argument_group(title="Graph decoration",
+            description="options for decorating the graph")
+    decoration.add_argument('-c', '--colour', action='append', default=[],
+            help="line colour, add once per line")
+    decoration.add_argument('-l', '--label', action='append', default=[],
+            help="line label, add once per line")
+    decoration.add_argument('--linestyle', action='append', default=[],
+            help="line style, add once per line (default: whole)")
+    decoration.add_argument('--errorstyle', action='append', default=[],
+            help="error line style, add once per line (default: dashed)")
+    decoration.add_argument('--title', default='', help="graph title")
+    decoration.add_argument('--xlabel', metavar="LABEL", default='',
+            help="label of x axis")
+    decoration.add_argument('--ylabel', metavar="LABEL", default='',
+            help="label of y axis")
+    decoration.add_argument('--dpi', type=int, default=150,
+            help="output DPI if graph is saved")
+
+    # Create mutually exclusive group for plot type
+    type_group = parser.add_argument_group(title="Graph type",
+            description="choice of metric for spreading, default is time")
+    _type = type_group.add_mutually_exclusive_group()
+    _type.add_argument('--time', dest='type', action='store_const',
+            const='times', default='times',
+            help="graph as a function of time")
+    _type.add_argument('--dist', dest='type', action='store_const',
+            const='dist', help="distance from surface to center of mass")
+    _type.add_argument('--frames', dest='type', action='store_const',
+            const='frames', help="frame number")
+    type_group.add_argument('--relative', action='store_true',
+            help="for time and frame graphs, set start at impact")
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Get colours and labels from default
+    colours = get_colours(args)
+    labels, legend = get_labels(args)
+
+    # Create option keywords for title, etc.
+    kwargs = {}
+    for name, opt in (
+            ('title', args.title), ('xlabel', args.xlabel),
+            ('ylabel', args.ylabel)
+            ):
+        if opt:
+            kwargs.setdefault(name, opt)
+
+    # Plot lines for all file lists
+    for i, spread_list in enumerate(args.spreading):
+        spread = combine_spread(spread_list)
+        error = args.error and len(spread_list) > 1
+        spread.plot(type=args.type, error=error, relative=args.relative,
+                color=colours[i], label=labels[i], sigma=args.sigma, **kwargs)
+
+    # Finish with decorations
+    if legend:
+        plt.legend()
+
+    if args.save:
+        plt.savefig(args.save, dpi=args.dpi)
+
+    if args.show:
+        plt.show()
