@@ -30,7 +30,7 @@ import sys
 from flowtools.datamaps import Spread
 from pandas import Series, DataFrame
 
-def combine_spread(spread_files):
+def combine_spread(spread_files, plot=False, **kwargs):
     """
     Combine the spread of input files, return with mean and standard
     deviation calculated.
@@ -49,6 +49,11 @@ def combine_spread(spread_files):
     # Read spread info from all files into dictionaries
     for i, _file in enumerate(spread_files):
         spread = Spread().read(_file)
+
+        # Plot if desired
+        if plot:
+            label = kwargs.pop('label', '_nolegend_')
+            spread.plot(label=label, **kwargs)
 
         # Save curricular data
         impact_list.append(spread.impact * spread.delta_t)
@@ -190,6 +195,8 @@ if __name__ == '__main__':
             help=("show graph (default: true, --noshow to turn off)"))
     line_show.add_argument('--noshow', action='store_false', dest='show',
             help=argparse.SUPPRESS)
+    line.add_argument('--nomean', action='store_true',
+            help="don't draw the mean of the spread, but individual lines")
 
     error = parser.add_argument_group(title="Error",
             description="options for error of data")
@@ -258,6 +265,7 @@ if __name__ == '__main__':
     # Create option keywords for title, etc.
     kwargs = {}
     for name, opt in (
+            ('type', args.type), ('relative', args.relative),
             ('title', args.title), ('xlabel', args.xlabel),
             ('ylabel', args.ylabel)
             ):
@@ -270,22 +278,25 @@ if __name__ == '__main__':
     except IndexError:
         parser.error("non-complete keyword-value argument in --linekwargs")
 
+    # If individual lines desired, collect data
+
     # Plot lines for all file lists
     for i, spread_list in enumerate(args.spreading):
-        spread = combine_spread(spread_list)
-
-        # Check if error bars need to be included
-        error = args.error and len(spread_list) > 1
-
         # Update kwargs for line styles
         kwargs.update({
             'linestyle': linestyles[i],
             'error_linestyle': errorstyles[i]
             })
 
+        spread = combine_spread(spread_list, plot=args.nomean,
+                color=colours[i], label=labels[i], **kwargs)
+
+        # Check if error bars need to be included
+        error = args.error and len(spread_list) > 1
+
         # Create graph
-        spread.plot(type=args.type, error=error, relative=args.relative,
-                color=colours[i], label=labels[i], sigma=args.sigma, **kwargs)
+        spread.plot(error=error, color=colours[i], label=labels[i],
+                sigma=args.sigma, drawline=False, **kwargs)
 
     # Finish with decorations and output options
     if legend:

@@ -145,6 +145,9 @@ class Spread(object):
         Keywords:
             com - True (default) or False to draw the spreading around the
                 center of mass of the droplet
+            error - True of False (default) to draw error bars if available
+            drawline - True (default) or False to draw spreading line,
+                useful to disable for only drawing error
             relative - True or False (default) to set start of time and frames
                 to impact
             type - 'times' (default), 'frames' or 'dist' to plot spread as
@@ -159,15 +162,19 @@ class Spread(object):
             spread['error'] = {
                     'left': {
                         'up': list(np.array(spread['left'])
-                            + np.array(self.spread['left']['std_error']) * sigma),
+                            + np.array(self.spread['left']['std_error'])
+                            * sigma),
                         'down': list(np.array(spread['left'])
-                            - np.array(self.spread['left']['std_error']) * sigma)
+                            - np.array(self.spread['left']['std_error'])
+                            * sigma)
                         },
                     'right': {
                         'up': list(np.array(spread['right'])
-                            + np.array(self.spread['right']['std_error']) * sigma),
+                            + np.array(self.spread['right']['std_error'])
+                            * sigma),
                         'down': list(np.array(spread['right'])
-                            - np.array(self.spread['right']['std_error']) * sigma)
+                            - np.array(self.spread['right']['std_error'])
+                            * sigma)
                         }
                     }
             return None
@@ -187,18 +194,19 @@ class Spread(object):
         def plot_lines(**kwargs):
             """Plot the spread as a function of supplied list."""
 
-
             spread = kwargs.pop('spread')
             x = kwargs.pop('x')
 
             kwargs.setdefault('color', 'blue')
+            drawline = kwargs.pop('drawline', True)
             label = kwargs.pop('label', '_nolegend_')
             error = kwargs.pop('error', False)
             error_linestyle = kwargs.pop('error_linestyle', 'dashed')
 
-            plt.plot(x, spread['left'], label = label, **kwargs)
-            plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
-                    **kwargs)
+            if drawline:
+                plt.plot(x, spread['left'], label = label, **kwargs)
+                plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
+                        **kwargs)
 
             kwargs.update({'linestyle': error_linestyle})
             if error:
