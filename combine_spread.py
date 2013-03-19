@@ -77,11 +77,14 @@ def combine_spread(spread_files):
         # Convert to DataFrames and keep only full rows
         variables[var] = DataFrame(series_data).dropna(0)
 
-        # Take mean and get standard deviation
+        # Take mean and get standard error
         mean = variables[var].mean(1)
-        std = np.sqrt((variables[var].sub(mean, axis='index')**2).mean(1))
+        std_error = np.sqrt(
+                (variables[var].sub(mean, axis='index')**2).mean(1)
+                / len(spread_files)
+                )
         variables[var]['mean'] = mean
-        variables[var]['std'] = std
+        variables[var]['std_error'] = std_error
 
     delta_t = variables['left'].index[1] - variables['left'].index[0]
 
@@ -89,10 +92,11 @@ def combine_spread(spread_files):
 
     spread.left = variables['left']['mean'].tolist()
     spread.spread['left']['com'] = variables['com_left']['mean'].tolist()
-    spread.spread['left']['std'] = variables['left']['std'].tolist()
+    spread.spread['left']['std_error'] = variables['left']['std_error'].tolist()
     spread.right = variables['right']['mean'].tolist()
     spread.spread['right']['com'] = variables['com_right']['mean'].tolist()
-    spread.spread['right']['std'] = variables['right']['std'].tolist()
+    spread.spread['right']['std_error'] \
+            = variables['right']['std_error'].tolist()
 
     spread.dist = variables['dist']['mean'].tolist()
     spread.times = list(variables['left'].index)
@@ -103,9 +107,10 @@ def combine_spread(spread_files):
 if __name__ == '__main__':
     # Get input files and options
     parser = argparse.ArgumentParser()
-    parser.add_argument('spreading', nargs='+',
-            help="list of spreading data files to combine")
+    parser.add_argument('-f', action='append', nargs='+',
+            help="list of spreading data files to graph")
     args = parser.parse_args()
+    print(args)
 
-    spread = combine_spread(args.spreading)
-    spread.plot(show = True, dist = True, error = True, legend = True)
+    #spread = combine_spread(args.spreading)
+    #spread.plot(show = True, type = 'frames', error = True, legend = True, relative=True)

@@ -66,11 +66,11 @@ class Spread(object):
         self.min_mass = kwargs.pop('min_mass', None)
 
         self.spread = {
-                'left': {'com': [], 'abs': [], 'std': []},
-                'right': {'com': [], 'abs': [], 'std': []},
-                'dist': {'val': [], 'std': []},
-                'frames': {'val': [], 'std': []},
-                'times': {'val': [], 'std': []}
+                'left': {'com': [], 'abs': [], 'std_error': []},
+                'right': {'com': [], 'abs': [], 'std_error': []},
+                'dist': {'val': [], 'std_error': []},
+                'frames': {'val': [], 'std_error': []},
+                'times': {'val': [], 'std_error': []}
                 }
 
         return None
@@ -159,15 +159,15 @@ class Spread(object):
             spread['error'] = {
                     'left': {
                         'up': list(np.array(spread['left'])
-                            + np.array(self.spread['left']['std']) * sigma),
+                            + np.array(self.spread['left']['std_error']) * sigma),
                         'down': list(np.array(spread['left'])
-                            - np.array(self.spread['left']['std']) * sigma)
+                            - np.array(self.spread['left']['std_error']) * sigma)
                         },
                     'right': {
                         'up': list(np.array(spread['right'])
-                            + np.array(self.spread['right']['std']) * sigma),
+                            + np.array(self.spread['right']['std_error']) * sigma),
                         'down': list(np.array(spread['right'])
-                            - np.array(self.spread['right']['std']) * sigma)
+                            - np.array(self.spread['right']['std_error']) * sigma)
                         }
                     }
             return None
@@ -241,7 +241,6 @@ class Spread(object):
         # If relative to impact wanted
         if relative:
             make_relative(spread)
-            print(spread['times'])
 
         kwargs.update({'spread': spread})
         kwargs.update({'figure': False})
