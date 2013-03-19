@@ -152,6 +152,29 @@ if __name__ == '__main__':
 
         return linestyles, error_linestyles
 
+    def get_plotkwargs(kwargs, args):
+        """Modify plot option keywords."""
+
+        plotkwargs = args.linekwargs.copy()
+        while plotkwargs:
+            value = plotkwargs.pop()
+            keyword = plotkwargs.pop()
+            kwargs.update({keyword: value})
+
+        return None
+
+    def get_savekwargs(kwargs, args):
+        """Modify plot option keywords."""
+
+        savekwargs = args.savekwargs.copy()
+        while savekwargs:
+            value = savekwargs.pop()
+            keyword = savekwargs.pop()
+            kwargs.update({keyword: value})
+
+        return None
+
+
     # Get input files and options
     parser = argparse.ArgumentParser()
 
@@ -199,8 +222,6 @@ if __name__ == '__main__':
             help="label of x axis")
     decoration.add_argument('--ylabel', metavar="LABEL", default='',
             help="label of y axis")
-    decoration.add_argument('--dpi', type=int, default=150,
-            help="output DPI if graph is saved")
 
     # Create mutually exclusive group for plot type
     type_group = parser.add_argument_group(title="Graph type",
@@ -215,6 +236,16 @@ if __name__ == '__main__':
             const='frames', help="frame number")
     type_group.add_argument('--relative', action='store_true',
             help="for time and frame graphs, set start at impact")
+
+    # Advanced options
+    kwargs_opts = parser.add_argument_group(title="Keywords",
+            description="additional keyword arguments for advanced options")
+    kwargs_opts.add_argument('--linekwargs', nargs='*', default=[],
+            metavar="KEYWORD VALUE",
+            help="add any plot keyword and arguments")
+    kwargs_opts.add_argument('--savekwargs', nargs='*', default=[],
+            metavar="KEYWORD VALUE",
+            help="add any savefig keyword and arguments")
 
     # Parse arguments
     args = parser.parse_args()
@@ -233,6 +264,12 @@ if __name__ == '__main__':
         if opt:
             kwargs.setdefault(name, opt)
 
+    # Get additional plot keywords
+    try:
+        get_plotkwargs(kwargs, args)
+    except IndexError:
+        parser.error("non-complete keyword-value argument in --linekwargs")
+
     # Plot lines for all file lists
     for i, spread_list in enumerate(args.spreading):
         spread = combine_spread(spread_list)
@@ -250,12 +287,14 @@ if __name__ == '__main__':
         spread.plot(type=args.type, error=error, relative=args.relative,
                 color=colours[i], label=labels[i], sigma=args.sigma, **kwargs)
 
-    # Finish with decorations
+    # Finish with decorations and output options
     if legend:
         plt.legend()
 
     if args.save:
-        plt.savefig(args.save, dpi=args.dpi)
+        kwargs = {}
+        get_savekwargs(kwargs, args)
+        plt.savefig(args.save, dpi=args.dpi, **kwargs)
 
     if args.show:
         plt.show()
