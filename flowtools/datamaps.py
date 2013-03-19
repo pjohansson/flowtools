@@ -194,22 +194,22 @@ class Spread(object):
             kwargs.setdefault('color', 'blue')
             label = kwargs.pop('label', '_nolegend_')
             error = kwargs.pop('error', False)
-            error_label = kwargs.pop('error_label', '__nolegend__')
+            error_linestyle = kwargs.pop('error_linestyle', 'dashed')
 
             plt.plot(x, spread['left'], label = label, **kwargs)
             plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
                     **kwargs)
 
+            kwargs.update({'linestyle': error_linestyle})
             if error:
                 plt.plot(x, spread['error']['left']['up'],
-                        hold = True, linestyle = 'dashed',
-                        label = error_label, **kwargs)
+                        hold = True, **kwargs)
                 plt.plot(x, spread['error']['left']['down'],
-                        hold = True, linestyle = 'dashed', **kwargs)
+                        hold = True, **kwargs)
                 plt.plot(x, spread['error']['right']['up'],
-                        hold = True, linestyle = 'dashed', **kwargs)
+                        hold = True, **kwargs)
                 plt.plot(x, spread['error']['right']['down'],
-                        hold = True, linestyle = 'dashed', **kwargs)
+                        hold = True, **kwargs)
 
             return None
 

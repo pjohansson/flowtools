@@ -124,17 +124,33 @@ if __name__ == '__main__':
 
         labels = args.label.copy()
 
-        default = ['__nolegend__']
+        default = ['_nolegend_']
         while len(labels) < len(args.spreading):
             labels += default
 
         # Check if legend required
-        if set(labels) == set(['__nolegend__']):
+        if set(labels) == set(['_nolegend_']):
             legend = False
         else:
             legend = True
 
         return labels, legend
+
+    def get_linestyles(args):
+        """Create lists of line styles."""
+
+        linestyles = args.linestyle.copy()
+        error_linestyles = args.errorstyle.copy()
+
+        default = ['solid']
+        while len(linestyles) < len(args.spreading):
+            linestyles += default
+
+        default = ['dashed']
+        while len(error_linestyles) < len(args.spreading):
+            error_linestyles += default
+
+        return linestyles, error_linestyles
 
     # Get input files and options
     parser = argparse.ArgumentParser()
@@ -173,8 +189,10 @@ if __name__ == '__main__':
     decoration.add_argument('-l', '--label', action='append', default=[],
             help="line label, add once per line")
     decoration.add_argument('--linestyle', action='append', default=[],
-            help="line style, add once per line (default: whole)")
+            choices=['solid', 'dashed', 'dashdot'],
+            help="line style, add once per line (default: solid)")
     decoration.add_argument('--errorstyle', action='append', default=[],
+            choices=['solid', 'dashed', 'dashdot'],
             help="error line style, add once per line (default: dashed)")
     decoration.add_argument('--title', default='', help="graph title")
     decoration.add_argument('--xlabel', metavar="LABEL", default='',
@@ -201,9 +219,10 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
 
-    # Get colours and labels from default
+    # Get colours, labels and line styles from default
     colours = get_colours(args)
     labels, legend = get_labels(args)
+    linestyles, errorstyles = get_linestyles(args)
 
     # Create option keywords for title, etc.
     kwargs = {}
@@ -217,7 +236,17 @@ if __name__ == '__main__':
     # Plot lines for all file lists
     for i, spread_list in enumerate(args.spreading):
         spread = combine_spread(spread_list)
+
+        # Check if error bars need to be included
         error = args.error and len(spread_list) > 1
+
+        # Update kwargs for line styles
+        kwargs.update({
+            'linestyle': linestyles[i],
+            'error_linestyle': errorstyles[i]
+            })
+
+        # Create graph
         spread.plot(type=args.type, error=error, relative=args.relative,
                 color=colours[i], label=labels[i], sigma=args.sigma, **kwargs)
 
