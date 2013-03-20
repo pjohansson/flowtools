@@ -55,7 +55,6 @@ class Spread(object):
         plot - draw the spreading
         read - read spreading information from a file
         save - save spreading information to a file
-        times - recalculate the times using a supplied delta_t
 
     """
 
@@ -65,219 +64,206 @@ class Spread(object):
         self.floor = kwargs.pop('floor', None)
         self.min_mass = kwargs.pop('min_mass', None)
 
-        self.spread = {
-                'left': {'com': [], 'abs': [], 'std_error': []},
-                'right': {'com': [], 'abs': [], 'std_error': []},
-                'dist': {'val': [], 'std_error': []},
-                'frames': {'val': [], 'std_error': []},
-                'times': {'val': [], 'std_error': []}
-                }
+        self._reset()
 
         return None
 
     @property
     def left(self):
-        return self.spread['left']['abs']
-
+        return self.spread['left']['val']
     @left.setter
     def left(self, _list):
-        self.spread['left']['abs'] = _list
+        self.spread['left']['val'] = _list
+        return None
 
     @property
     def right(self):
-        return self.spread['right']['abs']
-
+        return self.spread['right']['val']
     @right.setter
     def right(self, _list):
-        self.spread['right']['abs'] = _list
+        self.spread['right']['val'] = _list
+        return None
 
     @property
     def com(self):
-        return {
-                'left': self.spread['left']['com'],
-                'right': self.spread['right']['com']
-                }
-
+        return self.spread['com']['val']
     @com.setter
-    def com(self, _dict):
-        self.spread['left']['com'] = _dict['left']
-        self.spread['right']['com'] = _dict['right']
+    def com(self, _list):
+        self.spread['com']['val'] = _list
+        return None
 
     @property
     def dist(self):
         return self.spread['dist']['val']
-
     @dist.setter
     def dist(self, _list):
         self.spread['dist']['val'] = _list
-
-    @property
-    def frames(self):
-        return self.spread['frames']['val']
-
-    @frames.setter
-    def frames(self, _list):
-        self.spread['frames']['val'] = _list
+        return None
 
     @property
     def times(self):
         return self.spread['times']['val']
-
     @times.setter
     def times(self, _list):
         self.spread['times']['val'] = _list
 
-    @property
-    def impact(self):
-        """The impact frame of the system."""
-        if self.frames:
-            return self.frames[0]
-
-        return None
-
     def plot(self, **kwargs):
         """
-        Draw the spread as a function of frames, times or distance from
+        Draw the spread as a function of times or distance from
         substrate floor to center of mass. By default plots the distance
-        from edges to center of mass of impact, this can be turned off
-        by supplying the keyword com = False.
+        from edges to center of mass of impact, plot radius by supplying
+        keyword line = radius.
 
         Keywords:
-            com - True (default) or False to draw the spreading around the
-                center of mass of the droplet
             error - True of False (default) to draw error bars if available
-            drawline - True (default) or False to draw spreading line,
-                useful to disable for only drawing error
-            relative - True or False (default) to set start of time and frames
-                to impact
-            type - 'times' (default), 'frames' or 'dist' to plot spread as
-                a function of
+            line - 'com' (default) or 'radius' for line type
+            noline - True or False (default) to not draw spreading line,
+                useful to enable for only drawing the error
+            relative - True or False (default) to start time at impact
+            sigma - number of standard deviations from mean to use as
+                error lines (default: 1)
+            type - 'times' (default) or 'dist' to plot spread as a function of
+
             Others as for draw.draw
 
         """
 
-        def calc_error(spread, sigma):
-            """Calculate error for given sigma and add to spread dictionary."""
+        def calc_error(line, sigma):
+            """Calculate and return error for given line and sigma."""
 
-            spread['error'] = {
-                    'left': {
-                        'up': list(np.array(spread['left'])
-                            + np.array(self.spread['left']['std_error'])
-                            * sigma),
-                        'down': list(np.array(spread['left'])
-                            - np.array(self.spread['left']['std_error'])
-                            * sigma)
-                        },
-                    'right': {
-                        'up': list(np.array(spread['right'])
-                            + np.array(self.spread['right']['std_error'])
-                            * sigma),
-                        'down': list(np.array(spread['right'])
-                            - np.array(self.spread['right']['std_error'])
-                            * sigma)
-                        }
+            error = {
+                    'up': list(
+                        np.array(line['val'])
+                        + np.array(line['std_error']) * sigma
+                            ),
+                    'down': list(
+                        np.array(line['val'])
+                        - np.array(line['std_error']) * sigma
+                        )
                     }
+
+            return error
+
+        def draw_com(spread, **kwargs):
+            """Draw edges of droplet around center of mass."""
+
+            kwargs.setdefault('ylabel', 'Positions (nm)')
+
+            for line in (spread['left'], spread['right']):
+                if draw_line:
+                    kwargs.update({'linestyle': linestyle['line']})
+
+                    kwargs.update({'line': line['val']})
+                    plot_line(**kwargs)
+
+                if draw_error:
+                    kwargs.update({'linestyle', linestyle['error']})
+
+                    for line_error in calc_error(line, sigma).values():
+                        kwargs.update({'line': line_error})
+                        plot_line(**kwargs)
+
             return None
 
-        def make_relative(spread):
-            """Make impact frames and times start at 0."""
+        def draw_radius(spread, **kwargs):
+            """Draw the radius of spreading droplet."""
 
-            times = np.array(spread['times']) - spread['times'][0]
-            frames = np.array(spread['frames']) - spread['frames'][0]
+            kwargs.setdefault('ylabel', 'Droplet radius (nm)')
 
-            spread['times'] = list(times)
-            spread['frames'] = list(frames)
+            if draw_line:
+                kwargs.update({'linestyle': linestyle['line']})
+
+                kwargs.update({'line': spread['radius']['val']})
+                plot_line(**kwargs)
+            if draw_error:
+                kwargs.update({'linestyle': linestyle['error']})
+
+                for line_error in calc_error(spread['radius'], sigma):
+                    kwargs.update({'line': line_error})
+                    plot_line(**kwargs)
 
             return None
+
+        def get_domain(domain_type, **kwargs):
+            """
+            Prepare plot type based on 'dist' or 'times': Updates keyword
+            argument defaults and returns domain.
+
+            """
+
+            if domain_type == 'times' and spread['times']['val']:
+                domain = spread['times']
+                kwargs.setdefault('xlabel', 'Time (ps)')
+
+                if relative:
+                    domain = list(np.array(domain) - domain[0])
+
+            elif domain_type == 'dist' and spread['dist']['val']:
+                domain = spread['dist']
+                kwargs.setdefault(
+                        'xlabel',
+                        'Distance from substrate to center of mass (nm)'
+                        )
+                kwargs.setdefault('invert_x', kwargs.get('invert_x', True))
+
+            else:
+                raise KeyError("function type has to be 'times' or 'dist'")
+
+            return domain
 
         @draw
-        def plot_lines(**kwargs):
-            """Plot the spread as a function of supplied list."""
+        def plot_line(**kwargs):
+            """Decorator for line styles."""
 
-            spread = kwargs.pop('spread')
-            x = kwargs.pop('x')
+            domain = kwargs.pop('domain')
+            line = kwargs.pop('line')
 
-            kwargs.setdefault('color', 'blue')
-            drawline = kwargs.pop('drawline', True)
-            label = kwargs.pop('label', '_nolegend_')
-            error = kwargs.pop('error', False)
-            error_linestyle = kwargs.pop('error_linestyle', 'dashed')
-
-            if drawline:
-                plt.plot(x, spread['left'], label = label, **kwargs)
-                plt.plot(x, spread['right'], label = '_nolegend_', hold = True,
-                        **kwargs)
-
-            kwargs.update({'linestyle': error_linestyle})
-            if error:
-                plt.plot(x, spread['error']['left']['up'],
-                        hold = True, **kwargs)
-                plt.plot(x, spread['error']['left']['down'],
-                        hold = True, **kwargs)
-                plt.plot(x, spread['error']['right']['up'],
-                        hold = True, **kwargs)
-                plt.plot(x, spread['error']['right']['down'],
-                        hold = True, **kwargs)
+            plt.plot(domain, line, **kwargs)
 
             return None
 
-        _type = kwargs.pop('type', 'times')
-        if _type not in ['times', 'dist', 'frames']:
-            raise KeyError(
-                    "function type has to be 'times', 'dist' or 'frames'"
-                    )
+        # Get options
+        domain_type = kwargs.pop('type', 'times')
 
-        error = kwargs.get('error', False)
+        draw_error = kwargs.pop('error', False)
+        draw_line = kwargs.pop('noline', False)
         relative = kwargs.pop('relative', False)
         sigma = kwargs.pop('sigma', 1)
+        linestyle = {
+                'line': kwargs.pop('linestyle', 'solid'),
+                'error': kwargs.pop('linestyle_error', 'dashed')
+                }
 
-        # By default use spread around com
-        if kwargs.pop('com', True):
-            spread = {'left': self.com['left'], 'right': self.com['right']}
-        else:
-            spread = {'left': self.left, 'right': self.right}
-
-        # Add dist, times and frames
-        spread['times'] = self.times.copy()
-        spread['frames'] = self.frames.copy()
-        spread['dist'] = self.dist.copy()
-
-        # If desired add error dictionary
-        if error:
-            calc_error(spread, sigma)
-
-        # If relative to impact wanted
-        if relative:
-            make_relative(spread)
-
-        kwargs.update({'spread': spread})
+        # Set defaults for @draw
         kwargs.update({'figure': False})
         kwargs.setdefault('axis', 'normal')
-        kwargs.setdefault('ylabel', 'Positions (nm)')
         kwargs.setdefault('title', 'Spreading of droplet on substrate')
+        kwargs.setdefault('color', 'blue')
 
-        if _type == 'times' and self.times:
-            kwargs.update({'x': spread['times']})
-            kwargs.setdefault('xlabel', 'Time (ps)')
+        # Catch some particular draw options
+        save = kwargs.pop('save', None)
+        show = kwargs.pop('show', False)
+        kwargs.update({'save', False})
+        kwargs.update({'show', False})
 
-            plot_lines(**kwargs)
+        # Get domain
+        kwargs.update({'domain': get_domain(domain_type, **kwargs)})
 
-        elif _type == 'frames' and self.frames:
-            kwargs.update({'x': spread['frames']})
-            kwargs.setdefault('xlabel', 'Frame')
+        line_type = kwargs.pop('line', 'com')
+        if line_type == 'com':
+            draw_com(self.spread, **kwargs)
 
-            plot_lines(**kwargs)
+        elif line_type == 'radius':
+            draw_radius(self.spread, **kwargs)
 
-        elif _type == 'dist' and self.dist:
-            kwargs.update({'x': spread['dist']})
-            kwargs.setdefault(
-                    'xlabel', 'Distance from substrate to center of mass (nm)'
-                    )
-            kwargs.setdefault('invert_x', kwargs.get('invert_x', True))
+        else:
+            raise KeyError("line plot has to be 'com' or 'radius' type")
 
-            plot_lines(**kwargs)
-
-            # Invert x axis for distance
+        # Perform eventual caught options
+        if save:
+            plt.save(save, dpi=kwargs.get('dpi', None))
+        if show:
+            plt.show()
 
         return None
 
@@ -309,15 +295,9 @@ class Spread(object):
                 values = line.split()
                 self.left.append(float(values.pop(0)))
                 self.right.append(float(values.pop(0)))
-                self.com['left'].append(float(values.pop(0)))
-                self.com['right'].append(float(values.pop(0)))
-                self.frames.append(int(values.pop(0)))
+                self.com.append(float(values.pop(0)))
                 self.times.append(float(values.pop(0)))
                 self.dist.append(float(values.pop(0)))
-
-                if len(values) == 2:
-                    self.error['left'].append(float(values.pop(0)))
-                    self.error['right'].append(float(values.pop(0)))
 
                 line = _file.readline().strip()
 
@@ -330,7 +310,6 @@ class Spread(object):
             # Write general information
             if self.base != None:
                 _file.write("Path: %s\n" % self.base)
-            _file.write("Impact frame: %d\n" % self.impact)
             if self.delta_t != None:
                 _file.write("Delta_t: %f\n" % self.delta_t)
             if self.floor != None:
@@ -341,24 +320,20 @@ class Spread(object):
 
             # Write header and then fields
             _file.write("Spread:\n")
-            header = ("%9s %9s %9s %9s %9s %9s %9s"
+            header = ("%9s %9s %9s %9s %9s"
                     % (
-                        'left', 'right', 'com_left', 'com_right',
-                        'frames', 'times', 'dist'
+                        'left', 'right', 'com', 'times', 'dist'
                         )
                     )
 
             header += '\n'
             _file.write(header)
 
-            for i, _ in enumerate(self.frames):
-                line = ("%9.3f %9.3f %9.3f %9.3f %9d %9.3f %9.3f"
+            for i, _ in enumerate(self.times):
+                line = ("%9.3f %9.3f %9.3f %9.3f %9.3f"
                         % (
-                            self.left[i], self.right[i],
-                            self.com['left'][i], self.com['right'][i],
-                            self.frames[i],
-                            self.times[i],
-                            self.dist[i]
+                            self.left[i], self.right[i], self.com[i],
+                            self.times[i], self.dist[i]
                             )
                         )
 
@@ -370,28 +345,25 @@ class Spread(object):
     def _add(self, frame):
         """Add a frame of spreading."""
 
-        self.left.append(frame.pop('left'))
-        self.right.append(frame.pop('right'))
-
-        com = frame.pop('com')
-        self.com['left'].append(com['left'])
-        self.com['right'].append(com['right'])
-
-        self.frames.append(frame.pop('frame'))
-        self.times.append(frame.pop('time'))
-        self.dist.append(frame.pop('dist'))
+        try:
+            self.left.append(frame['left'])
+            self.right.append(frame['right'])
+            self.com.append(frame['com'])
+            self.dist.append(frame['dist'])
+            self.times.append(frame['time'])
+        except KeyError:
+            raise KeyError("not all values present to add")
 
         return None
 
     def _reset(self):
         """Reset the system."""
 
-        self.left = []
-        self.right = []
-        self.com = {'left': [], 'right': []}
-        self.dist = []
-        self.frames = []
-        self.times = []
+        spread = {}
+        for field in ('left', 'right', 'com', 'dist', 'times'):
+            spread.update({field: {'val': [], 'std_error': []}})
+
+        self.spread = spread
 
         return None
 
@@ -510,13 +482,7 @@ class System(object):
         Find and return the spreading of a droplet for datamaps in
         the system.
 
-        Spreading is returned as a dictionary containing spreading edges
-        in system coordinates as lists 'left' and 'right', and from center
-        of mass position in dictionary 'com' = {'left', 'right'} where
-        'left' and 'right' are lists as for system. Times are saved in
-        different lists as 'frames', 'times' and 'dist', standing for
-        frame number, time and distance from substrate to the center of
-        mass.
+        Spreading is returned as Spread class object.
 
         Keywords:
             print - True (default) or False to print status for collection
@@ -531,12 +497,10 @@ class System(object):
             """
             com_current = datamap.com
             frame = {
-                    'left': edges['left'], 'right': edges['right'],
-                    'com': {
-                        'left': edges['left'] - com_impact['X'],
-                        'right': edges['right'] - com_impact['X']
-                        },
-                    'frame': i, 'time': i * delta_t,
+                    'left': edges['left'] - com_impact['X'],
+                    'right': edges['right'] - com_impact['X'],
+                    'com': com_current['X'],
+                    'time': (i + 1) * delta_t,
                     'dist': com_current['Y'] - datamap.y(floor)
                     }
 
@@ -557,6 +521,7 @@ class System(object):
 
             # Get first and last droplet cells in row
             left = None
+            right = None
 
             for i, cell in enumerate(row):
                 if cell['droplet']:
@@ -586,8 +551,7 @@ class System(object):
             # Print status if desired
             if kwargs.get('print', True):
                 print("\rReading '%s' (%d of %d)"
-                        % (_file, i + 1, len(self.datamaps)),
-                        end = ' '
+                        % (_file, i + 1, len(self.datamaps)), end = ' '
                         )
 
             # Read DataMap with options
@@ -596,14 +560,14 @@ class System(object):
                     columns = self._droplet_columns
                     )
 
-            # Get center of mass, calculate edges
+            # Get edges of spread
             edges = find_edges(datamap, self.floor)
 
             # If edges found, collect and append frame information
             if edges:
+
                 # At impact, get center of mass
-                if self._spread.impact == None:
-                    # com_impact = datamap.com
+                if self._spread.times == []:
                     com_impact = DataMap(_file).com
 
                 frame = collect(
