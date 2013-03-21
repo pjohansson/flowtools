@@ -156,6 +156,8 @@ class Spread(object):
                     kwargs.update({'line': line['val']})
                     plot_line(**kwargs)
 
+                    kwargs.update({'label': '_nolegend_'})
+
                 if draw_error:
                     kwargs.update({'linestyle': linestyle['error']})
 
