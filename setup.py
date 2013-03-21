@@ -15,6 +15,7 @@ setup(
         requires=[
             'numpy (>=1.7.0)',
             'matplotlib (>=1.2.0)',
+            'pandas (>=0.10.1)',
             'scipy (>=0.11.0)'
             ],
         scripts=[

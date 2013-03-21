@@ -23,8 +23,13 @@ The suite consists of Modules for handling data and Scripts for running them.
 * datamaps - classes for handling and drawing data maps
 
 ## Scripts
-* collect_spread - collect the spread of a droplet on a substrate
-* combine_spread - combines and averages spread data
+* f_collect_spread - collect the spread of a droplet on a substrate
+* f_spread_plot - averages and draws spread data with error
+* f_flowmaps - draws flow fields of maps
+
+### Legacy
+* f_combine_maps - combines old type data maps to new type
+* f_spread_delta_t - add time to old type spread maps
 
 # Data format
 The data that these tools work on come from a specific output format from my
