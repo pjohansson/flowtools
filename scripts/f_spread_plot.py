@@ -45,6 +45,7 @@ def combine_spread(spread_files, plot=False, **kwargs):
     com_left = {}
     com_right = {}
     dist = {}
+    radius = {}
 
     # Read spread info from all files into dictionaries
     for i, _file in enumerate(spread_files):
@@ -64,13 +65,14 @@ def combine_spread(spread_files, plot=False, **kwargs):
         com_left[i] = Series(spread.com['left'], index = spread.times)
         com_right[i] = Series(spread.com['right'], index = spread.times)
         dist[i] = Series(spread.dist, index = spread.times)
+        radius[i] = (right[i] - left[i]) / 2
 
     impact_time = np.array(impact_list).mean()
     min_mass = max(min_mass_list)
     variables = {
             'left': left, 'right': right,
             'com_left': com_left, 'com_right': com_right,
-            'dist': dist
+            'dist': dist, 'radius': radius
             }
 
     for var, series_data in variables.items():
@@ -80,7 +82,7 @@ def combine_spread(spread_files, plot=False, **kwargs):
             series.index -= shift
 
         # Convert to DataFrames and keep only full rows
-        variables[var] = DataFrame(series_data).dropna(0)
+        variables[var] = DataFrame(series_data)
 
         # Take mean and get standard error
         mean = variables[var].mean(1)
@@ -102,6 +104,9 @@ def combine_spread(spread_files, plot=False, **kwargs):
     spread.spread['right']['com'] = variables['com_right']['mean'].tolist()
     spread.spread['right']['std_error'] \
             = variables['right']['std_error'].tolist()
+    spread.spread['radius']['val'] = variables['radius']['mean'].tolist()
+    spread.spread['radius']['std_error'] \
+            = variables['radius']['std_error'].tolist()
 
     spread.dist = variables['dist']['mean'].tolist()
     spread.times = list(variables['left'].index)
@@ -195,9 +200,33 @@ if __name__ == '__main__':
             help=("show graph (default: true, --noshow to turn off)"))
     line_show.add_argument('--noshow', action='store_false', dest='show',
             help=argparse.SUPPRESS)
-    line.add_argument('--nomean', action='store_true',
-            help="don't draw the mean of the spread, but individual lines")
 
+    # Create mutually exclusive group for plot type
+    type_group = parser.add_argument_group(title="Graph type",
+            description="choice of plotting droplet edge positions or radius, "
+                    "and what to draw as a function of")
+    type_group.add_argument('--nomean', action='store_true',
+            help="don't draw the mean of the spread, but individual lines")
+    _line = type_group.add_mutually_exclusive_group()
+    _line.add_argument('--com_edges', dest='line', action='store_const',
+            const='com_edges', default='com_edges',
+            help="draw edges from center of mass (default)")
+    _line.add_argument('--edges', dest='line', action='store_const',
+            const='edges', help="edges in system positions")
+    _line.add_argument('--radius', dest='line', action='store_const',
+            const='radius', help="total radius of spread")
+    _type = type_group.add_mutually_exclusive_group()
+    _type.add_argument('--time', dest='type', action='store_const',
+            const='times', default='times',
+            help="graph as a function of time (default)")
+    _type.add_argument('--dist', dest='type', action='store_const',
+            const='dist', help="distance from surface to center of mass")
+    _type.add_argument('--frames', dest='type', action='store_const',
+            const='frames', help="frame number")
+    type_group.add_argument('--relative', action='store_true',
+            help="for time and frame graphs, set start at impact")
+
+    # Error plotting
     error = parser.add_argument_group(title="Error",
             description="options for error of data")
     error_group = error.add_mutually_exclusive_group()
@@ -229,20 +258,6 @@ if __name__ == '__main__':
             help="label of x axis")
     decoration.add_argument('--ylabel', metavar="LABEL", default='',
             help="label of y axis")
-
-    # Create mutually exclusive group for plot type
-    type_group = parser.add_argument_group(title="Graph type",
-            description="choice of metric for spreading, default is time")
-    _type = type_group.add_mutually_exclusive_group()
-    _type.add_argument('--time', dest='type', action='store_const',
-            const='times', default='times',
-            help="graph as a function of time")
-    _type.add_argument('--dist', dest='type', action='store_const',
-            const='dist', help="distance from surface to center of mass")
-    _type.add_argument('--frames', dest='type', action='store_const',
-            const='frames', help="frame number")
-    type_group.add_argument('--relative', action='store_true',
-            help="for time and frame graphs, set start at impact")
 
     # Advanced options
     kwargs_opts = parser.add_argument_group(title="Keywords",
