@@ -102,10 +102,10 @@ class Spread(object):
 
     @property
     def times(self):
-        return self.spread['times']['val']
+        return self.spread['times']
     @times.setter
     def times(self, _list):
-        self.spread['times']['val'] = _list
+        self.spread['times'] = _list
 
     def plot(self, **kwargs):
         """
@@ -157,7 +157,7 @@ class Spread(object):
                     plot_line(**kwargs)
 
                 if draw_error:
-                    kwargs.update({'linestyle', linestyle['error']})
+                    kwargs.update({'linestyle': linestyle['error']})
 
                     for line_error in calc_error(line, sigma).values():
                         kwargs.update({'line': line_error})
@@ -184,33 +184,6 @@ class Spread(object):
 
             return None
 
-        def get_domain(domain_type, **kwargs):
-            """
-            Prepare plot type based on 'dist' or 'times': Updates keyword
-            argument defaults and returns domain.
-
-            """
-
-            if domain_type == 'times' and spread['times']['val']:
-                domain = spread['times']
-                kwargs.setdefault('xlabel', 'Time (ps)')
-
-                if relative:
-                    domain = list(np.array(domain) - domain[0])
-
-            elif domain_type == 'dist' and spread['dist']['val']:
-                domain = spread['dist']
-                kwargs.setdefault(
-                        'xlabel',
-                        'Distance from substrate to center of mass (nm)'
-                        )
-                kwargs.setdefault('invert_x', kwargs.get('invert_x', True))
-
-            else:
-                raise KeyError("function type has to be 'times' or 'dist'")
-
-            return domain
-
         @draw
         def plot_line(**kwargs):
             """Decorator for line styles."""
@@ -223,10 +196,8 @@ class Spread(object):
             return None
 
         # Get options
-        domain_type = kwargs.pop('type', 'times')
-
         draw_error = kwargs.pop('error', False)
-        draw_line = kwargs.pop('noline', False)
+        draw_line = not kwargs.pop('noline', False)
         relative = kwargs.pop('relative', False)
         sigma = kwargs.pop('sigma', 1)
         linestyle = {
@@ -243,11 +214,11 @@ class Spread(object):
         # Catch some particular draw options
         save = kwargs.pop('save', None)
         show = kwargs.pop('show', False)
-        kwargs.update({'save', False})
-        kwargs.update({'show', False})
+        kwargs.update({'save': False})
+        kwargs.update({'show': False})
 
-        # Get domain
-        kwargs.update({'domain': get_domain(domain_type, **kwargs)})
+        # Set domain to times
+        kwargs.update({'domain': self.spread['times']})
 
         line_type = kwargs.pop('line', 'com')
         if line_type == 'com':
@@ -360,7 +331,8 @@ class Spread(object):
         """Reset the system."""
 
         spread = {}
-        for field in ('left', 'right', 'com', 'dist', 'times'):
+        spread['times'] = []
+        for field in ('left', 'right', 'com', 'dist'):
             spread.update({field: {'val': [], 'std_error': []}})
 
         self.spread = spread

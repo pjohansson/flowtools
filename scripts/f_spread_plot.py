@@ -30,87 +30,94 @@ import sys
 from flowtools.datamaps import Spread
 from pandas import Series, DataFrame
 
-def combine_spread(spread_files, plot=False, **kwargs):
+def get_shift(spread_files_array, sync='none'):
+    """
+    Calculate the desired time shift for synchronisation, return as array
+    with time shift values corresponding to file name positions.
+
+    """
+
+    # If common center of mass for synchronisation desired, find minimum
+    if sync == 'com':
+        min_dist = np.inf
+        for spread_files in spread_files_array:
+            for _file in spread_files:
+                data = Spread().read(_file)
+                if data.dist[0] < min_dist:
+                    min_dist = data.dist[0]
+
+    # Find shift array depending on synchronisation
+    shift_array = []
+    for i, spread_files in enumerate(spread_files_array):
+        shift_array.append([])
+        for _file in spread_files:
+            data = Spread().read(_file)
+
+            if sync == 'impact':
+                shift = data.times[0]
+
+            elif sync == 'com':
+                j = 0
+                while data.dist[j] > min_dist:
+                    j += 1
+                shift = data.times[j]
+
+            else:
+                shift = 0.
+
+            shift_array[i].append(shift)
+
+    return shift_array
+
+def combine_spread(spread_files, shift, plot=False, **kwargs):
     """
     Combine the spread of input files, return with mean and standard
     deviation calculated.
 
     """
 
-    impact_list = []
-    min_mass_list = []
+    values = {}
+    for val in ('left', 'right', 'com', 'dist'):
+        values[val] = {}
 
-    left = {}
-    right = {}
-    com_left = {}
-    com_right = {}
-    dist = {}
-    radius = {}
-
-    # Read spread info from all files into dictionaries
+    # Collect data from all files into dictionaries
     for i, _file in enumerate(spread_files):
-        spread = Spread().read(_file)
+        data = Spread().read(_file)
+        for val in values.keys():
+            values[val][i] = Series(
+                    data=data.spread[val]['val'],
+                    index=data.times
+                    )
 
-        # Plot if desired
+        # If not drawing mean, draw individual graphs
         if plot:
-            label = kwargs.pop('label', '_nolegend_')
-            spread.plot(label=label, **kwargs)
+            data.times = list(np.array(data.times) - shift[i])
+            data.plot(**kwargs)
 
-        # Save curricular data
-        impact_list.append(spread.impact * spread.delta_t)
-        min_mass_list.append(spread.min_mass)
+    spread = Spread()
 
-        left[i] = Series(spread.left, index = spread.times)
-        right[i] = Series(spread.right, index = spread.times)
-        com_left[i] = Series(spread.com['left'], index = spread.times)
-        com_right[i] = Series(spread.com['right'], index = spread.times)
-        dist[i] = Series(spread.dist, index = spread.times)
-        radius[i] = (right[i] - left[i]) / 2
+    for val in values.keys():
 
-    impact_time = np.array(impact_list).mean()
-    min_mass = max(min_mass_list)
-    variables = {
-            'left': left, 'right': right,
-            'com_left': com_left, 'com_right': com_right,
-            'dist': dist, 'radius': radius
-            }
+        # Shift time as per synchronisation
+        for i in values[val]:
+            values[val][i].index = np.array(values[val][i].index) - shift[i]
 
-    for var, series_data in variables.items():
-        # Adjust impact times to mean
-        for series in series_data.values():
-            shift = series.index[0] - impact_time
-            series.index -= shift
+        # Convert to DataFrame
+        df = DataFrame(data=values[val])
 
-        # Convert to DataFrames and keep only full rows
-        variables[var] = DataFrame(series_data)
+        # If not a single file, keep only indices with at least two non-NaN
+        if len(spread_files) > 1:
+            df = df.dropna(thresh=2)
 
-        # Take mean and get standard error
-        mean = variables[var].mean(1)
-        std_error = np.sqrt(
-                (variables[var].sub(mean, axis='index')**2).mean(1)
-                / len(spread_files)
-                )
-        variables[var]['mean'] = mean
-        variables[var]['std_error'] = std_error
+        # Get times, mean and standard error as lists
+        mean = list(df.mean(axis=1))
+        std_error = list(df.std(axis=1))
+        times = list(df.index)
 
-    delta_t = variables['left'].index[1] - variables['left'].index[0]
-
-    spread = Spread(delta_t = delta_t, min_mass = min_mass)
-
-    spread.left = variables['left']['mean'].tolist()
-    spread.spread['left']['com'] = variables['com_left']['mean'].tolist()
-    spread.spread['left']['std_error'] = variables['left']['std_error'].tolist()
-    spread.right = variables['right']['mean'].tolist()
-    spread.spread['right']['com'] = variables['com_right']['mean'].tolist()
-    spread.spread['right']['std_error'] \
-            = variables['right']['std_error'].tolist()
-    spread.spread['radius']['val'] = variables['radius']['mean'].tolist()
-    spread.spread['radius']['std_error'] \
-            = variables['radius']['std_error'].tolist()
-
-    spread.dist = variables['dist']['mean'].tolist()
-    spread.times = list(variables['left'].index)
-    spread.frames = list(map(int, variables['left'].index / delta_t))
+        # Add to Spread object
+        spread.spread[val]['val'] = mean
+        spread.spread[val]['std_error'] = std_error
+        spread.spread['times'] = times
 
     return spread
 
@@ -202,12 +209,12 @@ if __name__ == '__main__':
             help=argparse.SUPPRESS)
 
     # Create mutually exclusive group for plot type
-    type_group = parser.add_argument_group(title="Graph type",
+    graph = parser.add_argument_group(title="Graph type",
             description="choice of plotting droplet edge positions or radius, "
-                    "and what to draw as a function of")
-    type_group.add_argument('--nomean', action='store_true',
+                    "and modifying domain")
+    graph.add_argument('--nomean', action='store_true',
             help="don't draw the mean of the spread, but individual lines")
-    _line = type_group.add_mutually_exclusive_group()
+    _line = graph.add_mutually_exclusive_group()
     _line.add_argument('--com_edges', dest='line', action='store_const',
             const='com_edges', default='com_edges',
             help="draw edges from center of mass (default)")
@@ -215,15 +222,11 @@ if __name__ == '__main__':
             const='edges', help="edges in system positions")
     _line.add_argument('--radius', dest='line', action='store_const',
             const='radius', help="total radius of spread")
-    _type = type_group.add_mutually_exclusive_group()
-    _type.add_argument('--time', dest='type', action='store_const',
-            const='times', default='times',
-            help="graph as a function of time (default)")
-    _type.add_argument('--dist', dest='type', action='store_const',
-            const='dist', help="distance from surface to center of mass")
-    _type.add_argument('--frames', dest='type', action='store_const',
-            const='frames', help="frame number")
-    type_group.add_argument('--relative', action='store_true',
+    sync = graph.add_mutually_exclusive_group()
+    sync.add_argument('--dist', action='store_const', const='com',
+            dest='sync', help="for time and frame graphs, set start at impact")
+    sync.add_argument('--relative', action='store_const', const='impact',
+            dest='sync', default='none',
             help="for time and frame graphs, set start at impact")
 
     # Error plotting
@@ -280,7 +283,6 @@ if __name__ == '__main__':
     # Create option keywords for title, etc.
     kwargs = {}
     for name, opt in (
-            ('type', args.type), ('relative', args.relative),
             ('title', args.title), ('xlabel', args.xlabel),
             ('ylabel', args.ylabel)
             ):
@@ -293,25 +295,24 @@ if __name__ == '__main__':
     except IndexError:
         parser.error("non-complete keyword-value argument in --linekwargs")
 
-    # If individual lines desired, collect data
+    # Find shift array for synchronisation
+    shift_array = get_shift(args.spreading, sync=args.sync)
 
     # Plot lines for all file lists
     for i, spread_list in enumerate(args.spreading):
         # Update kwargs for line styles
-        kwargs.update({
-            'linestyle': linestyles[i],
-            'error_linestyle': errorstyles[i]
-            })
+        kwargs.update({'linestyle': linestyles[i]})
+        kwargs.update({'linestyle_error': errorstyles[i]})
 
-        spread = combine_spread(spread_list, plot=args.nomean,
-                color=colours[i], label=labels[i], **kwargs)
+        spread = combine_spread(spread_list, shift=shift_array[i],
+                plot=args.nomean, color=colours[i], label=labels[i], **kwargs)
 
         # Check if error bars need to be included
         error = args.error and len(spread_list) > 1
 
         # Create graph
         spread.plot(error=error, color=colours[i], label=labels[i],
-                sigma=args.sigma, drawline=False, **kwargs)
+                sigma=args.sigma, noline=args.nomean, **kwargs)
 
     # Finish with decorations and output options
     if legend:
