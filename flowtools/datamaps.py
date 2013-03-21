@@ -262,15 +262,15 @@ class Spread(object):
                 line = _file.readline().strip()
 
             # Append spreading until end of file
-            line = _file.readline().strip()
+            header = _file.readline().strip().split()
             line = _file.readline().strip()
             while line:
                 values = line.split()
-                self.left.append(float(values.pop(0)))
-                self.right.append(float(values.pop(0)))
-                self.com.append(float(values.pop(0)))
-                self.times.append(float(values.pop(0)))
-                self.dist.append(float(values.pop(0)))
+                for i, val in enumerate(values):
+                    if header[i] == 'times':
+                        self.spread[header[i]].append(float(val))
+                    else:
+                        self.spread[header[i]]['val'].append(float(val))
 
                 line = _file.readline().strip()
 
