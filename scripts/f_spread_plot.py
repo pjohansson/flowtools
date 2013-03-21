@@ -30,45 +30,6 @@ import sys
 from flowtools.datamaps import Spread
 from pandas import Series, DataFrame
 
-def get_shift(spread_files_array, sync='none'):
-    """
-    Calculate the desired time shift for synchronisation, return as array
-    with time shift values corresponding to file name positions.
-
-    """
-
-    # If common center of mass for synchronisation desired, find minimum
-    if sync == 'com':
-        min_dist = np.inf
-        for spread_files in spread_files_array:
-            for _file in spread_files:
-                data = Spread().read(_file)
-                if data.dist[0] < min_dist:
-                    min_dist = data.dist[0]
-
-    # Find shift array depending on synchronisation
-    shift_array = []
-    for i, spread_files in enumerate(spread_files_array):
-        shift_array.append([])
-        for _file in spread_files:
-            data = Spread().read(_file)
-
-            if sync == 'impact':
-                shift = data.times[0]
-
-            elif sync == 'com':
-                j = 0
-                while data.dist[j] > min_dist:
-                    j += 1
-                shift = data.times[j]
-
-            else:
-                shift = 0.
-
-            shift_array[i].append(shift)
-
-    return shift_array
-
 def combine_spread(spread_files, shift, plot=False, **kwargs):
     """
     Combine the spread of input files, return with mean and standard
@@ -92,6 +53,8 @@ def combine_spread(spread_files, shift, plot=False, **kwargs):
         # If not drawing mean, draw individual graphs
         if plot:
             data.times = list(np.array(data.times) - shift[i])
+            if i > 0:
+                kwargs.update({'label': '_nolegend_'})
             data.plot(**kwargs)
 
     spread = Spread()
@@ -107,7 +70,7 @@ def combine_spread(spread_files, shift, plot=False, **kwargs):
 
         # If not a single file, keep only indices with at least two non-NaN
         if len(spread_files) > 1:
-            df = df.dropna(thresh=2)
+            df = df.dropna()
 
         # Get times, mean and standard error as lists
         mean = list(df.mean(axis=1))
@@ -169,6 +132,45 @@ if __name__ == '__main__':
 
         return linestyles, error_linestyles
 
+    def get_shift(spread_files_array, sync='none'):
+        """
+        Calculate the desired time shift for synchronisation, return as array
+        with time shift values corresponding to file name positions.
+
+        """
+
+        # If common center of mass for synchronisation desired, find minimum
+        if sync == 'com':
+            min_dist = np.inf
+            for spread_files in spread_files_array:
+                for _file in spread_files:
+                    data = Spread().read(_file)
+                    if data.dist[0] < min_dist:
+                        min_dist = data.dist[0]
+
+        # Find shift array depending on synchronisation
+        shift_array = []
+        for i, spread_files in enumerate(spread_files_array):
+            shift_array.append([])
+            for _file in spread_files:
+                data = Spread().read(_file)
+
+                if sync == 'impact':
+                    shift = data.times[0]
+
+                elif sync == 'com':
+                    j = 0
+                    while data.dist[j] > min_dist:
+                        j += 1
+                    shift = data.times[j]
+
+                else:
+                    shift = 0.
+
+                shift_array[i].append(shift)
+
+        return shift_array
+
     def get_plotkwargs(kwargs, args):
         """Modify plot option keywords."""
 
@@ -218,8 +220,6 @@ if __name__ == '__main__':
     _line.add_argument('--com_edges', dest='line', action='store_const',
             const='com_edges', default='com_edges',
             help="draw edges from center of mass (default)")
-    _line.add_argument('--edges', dest='line', action='store_const',
-            const='edges', help="edges in system positions")
     _line.add_argument('--radius', dest='line', action='store_const',
             const='radius', help="total radius of spread")
     sync = graph.add_mutually_exclusive_group()
@@ -252,10 +252,10 @@ if __name__ == '__main__':
             help="line label, add once per line")
     decoration.add_argument('--linestyle', action='append', default=[],
             choices=['solid', 'dashed', 'dashdot'],
-            help="line style, add once per line (default: solid)")
+            help="line style (default: solid)")
     decoration.add_argument('--errorstyle', action='append', default=[],
             choices=['solid', 'dashed', 'dashdot'],
-            help="error line style, add once per line (default: dashed)")
+            help="error line style (default: dashed)")
     decoration.add_argument('--title', default='', help="graph title")
     decoration.add_argument('--xlabel', metavar="LABEL", default='',
             help="label of x axis")
