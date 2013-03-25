@@ -27,7 +27,7 @@ Functions:
 
 """
 
-from flowtools.draw import draw
+from flowtools.draw import draw, plot_line
 
 import itertools
 import math
@@ -221,6 +221,7 @@ class Spread(object):
 
         # Set domain to times
         kwargs.update({'domain': self.spread['times']})
+        kwargs.setdefault('xlabel', 'Time (ps)')
 
         line_type = kwargs.pop('line', 'com')
         if line_type == 'com':

@@ -46,7 +46,7 @@ def draw(func):
             plt.figure()
 
         # Labels
-        plt.xlabel(kwargs.pop('xlabel', 'Position (nm)'))
+        plt.xlabel(kwargs.pop('xlabel', 'Time (ps)'))
         plt.ylabel(kwargs.pop('ylabel', 'Height (nm)'))
         plt.title(kwargs.pop('title', ''))
 
@@ -82,3 +82,23 @@ def draw(func):
             plt.clf()
 
     return wrapper
+
+@draw
+def plot_line(**kwargs):
+    """
+    Plot a line, decorated by draw.
+
+    Keywords:
+        domain - domain of plot
+        line - line
+
+        Others as for draw and plot
+
+        """
+
+    domain = kwargs.pop('domain')
+    line = kwargs.pop('line')
+
+    plt.plot(domain, line, **kwargs)
+
+    return None
