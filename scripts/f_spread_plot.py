@@ -8,7 +8,7 @@ import sys
 from flowtools.draw import plot_line
 from flowtools.datamaps import Spread
 from pandas import Series, DataFrame
-from scipy import stats
+from scipy import stats, optimize
 
 def combine_spread(spread_files, shift, drop_return_data=False):
     """
@@ -61,6 +61,8 @@ def combine_spread(spread_files, shift, drop_return_data=False):
         spread.spread[val]['val'] = mean
         spread.spread[val]['std_error'] = std_error
         spread.spread['times'] = times
+
+    spread.delta_t = spread.times[1] - spread.times[0]
 
     return spread, data
 
@@ -285,6 +287,90 @@ def t_test_plot(args):
         plt.show()
 
     return None
+
+def spread_fit(args):
+    """Fit the combined spreading of maps to power laws."""
+
+    # Get colours, labels and line styles from default
+    colours = get_colours(args.colour, len(args.spreading))
+    labels, draw_legend = get_labels(args.label, len(args.spreading))
+
+    linestyles = {}
+    linestyles['line'] = get_linestyles(args.linestyle, len(args.spreading))
+    linestyles['error'] = get_linestyles(args.errorstyle, len(args.spreading),
+            'dashed')
+
+    # Define fitting function
+    fitfunc = lambda p, x: p[0] + p[1] * x
+    errfunc = lambda p, x, y: (y - fitfunc(p, x))
+
+    # Define initial guess
+    pinit = [1.0, 1/7]
+
+    # Try regimes ...
+    regimes = {}
+    num_regimes = max(len(args.rt0), len(args.rt1))
+    for i in list(range(num_regimes)):
+        pass
+
+
+
+    regimes = {'init': {}, 'mid': {}, 'final': {}}
+    regimes['init']['t0'] = 0
+    regimes['init']['t1'] = 200
+    regimes['mid']['t0'] = 2 * regimes['init']['t1']
+    regimes['mid']['t1'] = 10 * regimes['init']['t1']
+    regimes['final']['t0'] = 2 * regimes['mid']['t1']
+    regimes['final']['t1'] = np.inf
+
+    plt.hold(True)
+
+    for i, _file in enumerate(args.spreading):
+        # Save values to dict
+        amp = {'init': [],'mid': [],'final': []}
+        index = {'init': [],'mid': [],'final': []}
+
+        spread = Spread().read(_file)
+
+        # Synchronise time to impact, remove first point
+        t0 = spread.times[0]
+        tdata = np.array(spread.times) - t0
+        ydata = np.array(spread.right) - np.array(spread.left)
+
+        plt.plot(tdata, ydata, color='blue')
+
+        # Split into regimes
+        for regime in ('init', 'mid', 'final'):
+            regimes[regime]['times'] = []
+            regimes[regime]['val'] = []
+
+            # Find data for regime
+            for n, time in enumerate(tdata):
+                if regimes[regime]['t0'] < time <= regimes[regime]['t1']:
+                    regimes[regime]['times'].append(tdata[n])
+                    regimes[regime]['val'].append(ydata[n])
+
+            # Find fit for data
+            logt = np.log(regimes[regime]['times'])
+            logy = np.log(regimes[regime]['val'])
+
+            out = optimize.leastsq(errfunc, pinit, args=(logt, logy))
+            pfinal = out[0]
+            c = np.exp(pfinal[0])
+            n = pfinal[1]
+
+            amp[regime].append(c)
+            index[regime].append(n)
+
+            y = c * (regimes[regime]['times'] ** n)
+            plt.plot(regimes[regime]['times'], y, color='g')
+
+    print(amp)
+    print(index)
+    plt.show()
+
+    return None
+
 def spread_plot(args):
     """Draw the spreading as a function of time."""
 
@@ -459,6 +545,77 @@ if __name__ == '__main__':
 
     # Decoration options
     decoration = plot_args.add_argument_group(title="Graph decoration",
+            description="options for decorating the graph")
+    decoration.add_argument('-c', '--colour', action='append', default=[],
+            help="line colour, add once per line")
+    decoration.add_argument('-l', '--label', action='append', default=[],
+            help="line label, add once per line")
+    decoration.add_argument('--linestyle', action='append', default=[],
+            choices=['solid', 'dashed', 'dashdot', 'dotted'],
+            help="line style (default: solid)")
+    decoration.add_argument('--errorstyle', action='append', default=[],
+            choices=['solid', 'dashed', 'dashdot', 'dotted'],
+            help="error line style (default: dashed)")
+    decoration.add_argument('-t0', type=float, default=None, metavar="TIME",
+            dest='t0', help="start time of graph")
+    decoration.add_argument('-tend', type=float, default=None, metavar="TIME",
+            dest='tend', help="maximum time of graph")
+    decoration.add_argument('--title',
+            default="Spreading of droplet on substrate", help="graph title")
+    decoration.add_argument('--xlabel', metavar="LABEL",
+            default="Time (ps)", help="label of x axis")
+    decoration.add_argument('--ylabel', metavar="LABEL",
+            default="Spreading from center of mass (nm)",
+            help="label of y axis")
+    ##
+    ## Curve fit
+    ##
+
+    fit_args = subparsers.add_parser('fit',
+            help="draw plots of spread data, combined or not")
+    fit_args.set_defaults(func=spread_fit)
+
+    line = fit_args.add_argument_group(title="Main")
+    line.add_argument('-f', '--files', dest='spreading',
+            nargs='+', metavar="FILES", required=True,
+            help="list of spreading data files")
+    line.add_argument('-s', '--save', metavar="PATH",
+            help="optionally save output image to path")
+
+    # --show or --noshow for drawing figure
+    line_show = line.add_mutually_exclusive_group()
+    line_show.add_argument('--show', action='store_true', dest='show',
+            default=True,
+            help=("show graph (default: true, --noshow to turn off)"))
+    line_show.add_argument('--noshow', action='store_false', dest='show',
+            help=argparse.SUPPRESS)
+
+    # Regime data
+    regime_args = fit_args.add_argument_group(title="Regime options")
+    regime_args.add_argument('-rt0', type=float, nargs='*', default=[],
+            help="add regimes with different starting times")
+    regime_args.add_argument('-rt1', type=float, nargs='*', default=[],
+            help="add end times for regimes")
+
+    # Error plotting
+    error = fit_args.add_argument_group(title="Error",
+            description="options for error of fitted lines")
+
+    # --error or --noerror for drawing error bars
+    error_group = error.add_mutually_exclusive_group()
+    error_group.add_argument('--error', action='store_true', dest='error',
+            default=True,
+            help=("show error for lines if multiple files entered "
+                    "(default: true, --noerror to turn off)"))
+    error_group.add_argument('--noerror', action='store_false',
+            dest='error', help=argparse.SUPPRESS)
+
+    error.add_argument('--sigma', type=float, default=1.,
+            help="number of standard deviations from mean, or Z-score, "
+                    "for error lines (default: 1)")
+
+    # Decoration options
+    decoration = fit_args.add_argument_group(title="Graph decoration",
             description="options for decorating the graph")
     decoration.add_argument('-c', '--colour', action='append', default=[],
             help="line colour, add once per line")
