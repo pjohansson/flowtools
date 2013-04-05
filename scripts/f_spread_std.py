@@ -3,13 +3,9 @@
 import argparse
 import numpy as np
 import pylab as plt
-import sys
 
 from flowtools.draw import plot_line
 from flowtools.datamaps import Spread
-from pandas import Series, DataFrame
-from scipy import stats
-
 from flowtools.utils import combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
 def sample_error_plot(args):
