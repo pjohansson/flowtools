@@ -10,7 +10,7 @@ from flowtools.datamaps import Spread
 from pandas import Series, DataFrame
 from scipy import stats
 
-from f_spread_plot import combine_spread, get_colours, get_labels, get_linestyles, get_shift
+from flowtools.utils import combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
 def t_test_plot(args):
     """Perform a Welch's t-test on two sets of spread data, plot probability."""

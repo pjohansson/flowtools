@@ -23,6 +23,7 @@ setup(
             'scripts/f_combine_maps.py',
             'scripts/f_flowmaps.py',
             'scripts/f_spread_delta_t.py',
-            'scripts/f_spread_plot.py'
+            'scripts/f_spread_plot.py',
+            'scripts/f_spread_ttest.py'
             ]
         )

@@ -1185,4 +1185,3 @@ class DataMap(object):
                 )
         self.cells = self.cells.transpose()
         return None
-
