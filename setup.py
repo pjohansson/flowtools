@@ -24,6 +24,8 @@ setup(
             'scripts/f_flowmaps.py',
             'scripts/f_spread_delta_t.py',
             'scripts/f_spread_plot.py',
-            'scripts/f_spread_ttest.py'
+            'scripts/f_spread_ttest.py',
+            'scripts/f_spread_com.py',
+            'scripts/f_spread_std.py'
             ]
         )

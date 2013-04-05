@@ -3,17 +3,46 @@
 import argparse
 import numpy as np
 import pylab as plt
-import sys
 
 from flowtools.draw import plot_line
 from flowtools.datamaps import Spread
-from pandas import Series, DataFrame
+from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels, get_linestyles, get_shift
+from pandas import DataFrame, Series
 from scipy import stats
-
-from flowtools.utils import combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
 def t_test_plot(args):
     """Perform a Welch's t-test on two sets of spread data, plot probability."""
+
+    def plot(spreading, _type, shift_array):
+        def get_line(spread, _type):
+            if _type == 'left' or _type == 'right':
+                return spread.spread[_type]['val']
+            elif _type == 'radius':
+                return calc_radius(spread)
+
+        data = {}
+        n = 0
+        for i, spread_list in enumerate(spreading):
+            for j, _file in enumerate(spread_list):
+                spread = Spread().read(_file)
+                line = get_line(spread, _type)
+                times = np.array(spread.times) - shift_array[i][j]
+                data[n] = Series(data=line, index=times)
+                n += 1
+
+        # Create DataFrame for all values and drop nan
+        df = DataFrame(data).dropna()
+        domain = df.index
+
+        n = 0
+        data = [[], []]
+        for i, spread_list in enumerate(spreading):
+            for j, _ in enumerate(spread_list):
+                data[i].append(df[n].tolist())
+                n += 1
+        t, p = stats.ttest_ind(data[0], data[1], equal_var=False)
+        plot_line(line=p, domain=domain, label=label[0], color=colour[0],
+                linestyle=linestyle['line'][0], hold=True)
 
     # Two sets of data must be given
     if len(args.spreading) != 2:
@@ -30,41 +59,11 @@ def t_test_plot(args):
     # Find shift array for synchronisation
     shift_array = get_shift(args.spreading, sync=args.sync)
 
-    left = {}
-    right = {}
-    n = 0
-    for i, spread_list in enumerate(args.spreading):
-        # Collect data to dicts
-        for j, _file in enumerate(spread_list):
-            spread = Spread().read(_file)
-            times = np.array(spread.times) - shift_array[i][j]
-            left[n] = Series(data=spread.left, index=times)
-            right[n] = Series(data=spread.right, index=times)
-            n += 1
-
-    # Construct DataFrame and drop nan-indices
-    df = {}
-    df['left'] = DataFrame(left).dropna()
-    df['right'] = DataFrame(right).dropna()
-
-    domain = df['left'].index
-    data = {}
-    for num, array in enumerate(['left', 'right']):
-        n = 0
-        data[array] = [[], []]
-        for i, spread_list in enumerate(args.spreading):
-            for j, _ in enumerate(spread_list):
-                data[array][i].append(df[array][n].tolist())
-                n += 1
-
-        t, p = stats.ttest_ind(
-            data[array][0],
-            data[array][1],
-            equal_var=False
-            )
-
-        plot_line(line=p, domain=domain, label=label[num], color=colour[num],
-                linestyle=linestyle['line'][num], hold=True)
+    if args.radius:
+        plot(args.spreading, 'radius', shift_array)
+    else:
+        plot(args.spreading, 'left', shift_array)
+        plot(args.spreading, 'right', shift_array)
 
     plt.axis('normal')
 
@@ -109,6 +108,8 @@ if __name__ == '__main__':
             help="synchronise times of different data to a common distance "
             "to the center of mass ('com', default), or to time of impact "
             "('impact')")
+    line.add_argument('--radius', action='store_true',
+            help="perform the test on the total radius instead of edges")
 
     # Decoration options
     decoration = parser.add_argument_group(title="Graph decoration",

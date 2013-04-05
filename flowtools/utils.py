@@ -18,6 +18,7 @@
 Utilities for scripting flow tools.
 
 Functions:
+    calc_radius - calculate the radius as a droplet spreads
     combine_spread - combine the spread of several data files to a single with
         errors and what not
     get_colours - get input colours from a default list
@@ -31,6 +32,11 @@ from flowtools.datamaps import Spread
 from pandas import DataFrame, Series
 
 import numpy as np
+
+def calc_radius(spread):
+    """Calculate and return a list of radius."""
+
+    return list((np.array(spread.right) - np.array(spread.left)) / 2)
 
 def combine_spread(spread_files, shift, drop_return_data=False):
     """
