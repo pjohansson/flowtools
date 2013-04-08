@@ -5,10 +5,18 @@ import numpy as np
 import pylab as plt
 
 from flowtools.datamaps import Spread
-from flowtools.utils import combine_spread, get_colours, get_labels, get_linestyles, get_shift
+from flowtools.draw import plot_line
+from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
 def spread_plot(args):
     """Draw the spreading as a function of time."""
+
+    def get_line(spread, _type):
+        if _type == 'left' or _type == 'right':
+            return spread.spread[_type]['val']
+        elif _type == 'radius':
+            radius = calc_radius(spread)
+            return radius
 
     # Get colours, labels and line styles from default
     colours = get_colours(args.colour, len(args.spreading))
@@ -24,28 +32,59 @@ def spread_plot(args):
 
     for i, spread_list in enumerate(args.spreading):
         spread, data = combine_spread(spread_list, shift=shift_array[i])
-        spread.spread['times'] = list(np.array(spread.times) / 1000)
 
         # If --nomean, draw lines here
         if args.nomean:
             label = labels[i]
             for spread_data in data:
-                spread_data.plot(error=False, color=colours[i],
-                        label=label, linestyle=linestyles['line'][i])
+                if args.radius:
+                    plot_line(
+                            line=get_line(spread_data, 'radius'),
+                            domain=spread_data.times,
+                            color=colours[i], label=label,
+                            linestyle=linestyles['line'][i]
+                        )
+                else:
+                    plot_line(
+                            line=get_line(spread_data, 'left'),
+                            domain=spread_data.times,
+                            color=colours[i], label=label,
+                            linestyle=linestyles['line'][i]
+                        )
+                    plot_line(
+                            line=get_line(spread_data, 'right'),
+                            domain=spread_data.times,
+                            color=colours[i], label=label,
+                            linestyle=linestyles['line'][i]
+                        )
                 label = '_nolegend_'
+        else:
+            if args.radius:
+                plot_line(
+                    line=get_line(spread, 'radius'),
+                    domain=spread.times,
+                    color=colours[i], label=labels[i],
+                    linestyle=linestyles['line'][i]
+                    )
+            else:
+                plot_line(
+                    line=get_line(spread, 'left'),
+                    domain=spread.times,
+                    color=colours[i], label=labels[i],
+                    linestyle=linestyles['line'][i]
+                    )
+                plot_line(
+                    line=get_line(spread, 'right'),
+                    domain=spread.times,
+                    color=colours[i], label=labels[i],
+                    linestyle=linestyles['line'][i]
+                    )
 
-        # Check if error bars need to be included
-        error = args.error and len(spread_list) > 1
+    plt.title(args.title, fontsize='medium')
+    plt.xlabel(args.xlabel, fontsize='medium')
+    plt.ylabel(args.ylabel, fontsize='medium')
 
-        # Create graph
-        spread.plot(error=error, color=colours[i], label=labels[i],
-                sigma=args.sigma, noline=args.nomean,
-                linestyle=linestyles['line'][i],
-                linestyle_error=linestyles['error'][i])
-
-    plt.title(args.title, fontsize=16)
-    plt.xlabel(args.xlabel, fontsize=16)
-    plt.ylabel(args.ylabel, fontsize=16)
+    plt.axis('normal')
 
     plt.xlim([args.t0, args.tend])
 
@@ -89,6 +128,8 @@ if __name__ == '__main__':
     line.add_argument('--nomean', action='store_true',
             help="don't take the mean of spread lines, "
             "instead draw individually")
+    line.add_argument('--radius', action='store_true',
+            help="draw radius instead of edge positions")
 
     # Error plotting
     error = parser.add_argument_group(title="Error",
