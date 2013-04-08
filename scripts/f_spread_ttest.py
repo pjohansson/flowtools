@@ -44,6 +44,8 @@ def t_test_plot(args):
         plot_line(line=p, domain=domain, label=label[0], color=colour[0],
                 linestyle=linestyle['line'][0], hold=True)
 
+        return None
+
     # Two sets of data must be given
     if len(args.spreading) != 2:
         parser.error("exactly two sets of spread data must be supplied with -f "
