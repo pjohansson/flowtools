@@ -8,8 +8,7 @@ from flowtools.draw import plot_line
 from flowtools.datamaps import Spread
 from flowtools.utils import combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
-def sample_error_plot(args):
-    """Draw the sample error for spread data."""
+def sample_error_plot(args): """Draw the sample error for spread data."""
 
     colours = get_colours(args.colour, len(args.spreading))
     labels, draw_legend = get_labels(args.label, len(args.spreading))
