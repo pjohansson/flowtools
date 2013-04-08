@@ -33,10 +33,21 @@ from pandas import DataFrame, Series
 
 import numpy as np
 
-def calc_radius(spread):
-    """Calculate and return a list of radius."""
+def calc_radius(spread, error=False):
+    """
+    Calculate and return a list of radius.
 
-    return list((np.array(spread.right) - np.array(spread.left)) / 2)
+    Supply error=True to return tuple of radius and error values.
+
+    """
+    radius = list((np.array(spread.right) - np.array(spread.left)) / 2)
+    if not error:
+        return radius
+    else:
+        std_error = {'left': [], 'right': []}
+        for key in std_error.keys():
+            std_error[key] = np.array(spread.spread[key]['std_error'])**2
+        return radius, np.sqrt(std_error['right'] + std_error['left'])
 
 def combine_spread(spread_files, shift, drop_return_data=False):
     """

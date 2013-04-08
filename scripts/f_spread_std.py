@@ -6,9 +6,32 @@ import pylab as plt
 
 from flowtools.draw import plot_line
 from flowtools.datamaps import Spread
-from flowtools.utils import combine_spread, get_colours, get_labels, get_linestyles, get_shift
+from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
-def sample_error_plot(args): """Draw the sample error for spread data."""
+def sample_error_plot(args):
+    """Draw the sample error for spread data."""
+
+    def plot(spreading, _type, shift, style):
+        def get_line(spread, _type):
+            if _type == 'left' or _type == 'right':
+                return spread.spread[_type]['std_error']
+            elif _type == 'radius':
+                _, radius = calc_radius(spread, error=True)
+                return radius
+
+        for i, spread_list in enumerate(spreading):
+            spread, _ = combine_spread(spread_list, shift=shift[0])
+
+            domain = spread.times
+            line = get_line(spread, _type)
+            plot_line(
+                    line=line, domain=domain,
+                    color=colours[i], label=labels[i],
+                    linestyle=style[i],
+                    hold=True
+                    )
+
+        return None
 
     colours = get_colours(args.colour, len(args.spreading))
     labels, draw_legend = get_labels(args.label, len(args.spreading))
@@ -18,7 +41,7 @@ def sample_error_plot(args): """Draw the sample error for spread data."""
     linestyles = {}
     linestyles['line'] = get_linestyles(args.linestyle, len(args.spreading))
     linestyles['compare'] = get_linestyles(args.compstyle, len(args.spreading),
-            'dashed')
+            'dotted')
 
     for i, spread_list in enumerate(args.spreading):
         if args.sync == 'com':
@@ -28,34 +51,21 @@ def sample_error_plot(args): """Draw the sample error for spread data."""
             shift = get_shift([spread_list], sync='impact')
             comp_shift = get_shift([spread_list], sync='com')
 
-        spread, _ = combine_spread(spread_list, shift=shift[0])
-
-        domain = spread.times
-        line = (np.array(spread.spread['left']['std_error'])
-                + np.array(spread.spread['right']['std_error'])) / 2
-
-        plot_line(
-                line=line, domain=domain,
-                color=colours[i], label=labels[i],
-                axis='normal', linestyle=linestyles['line'][i]
-                )
-
+    if args.radius:
+        plot(args.spreading, 'radius', shift, linestyles['line'])
         if args.compare:
-            spread, data = combine_spread(spread_list, shift=comp_shift[0])
-            domain = spread.times
-
-            line = (np.array(spread.spread['left']['std_error'])
-                    + np.array(spread.spread['right']['std_error'])) / 2
-
-            plot_line(
-                    line=line, domain=domain,
-                    color=colours[i], label=complabels[i],
-                    axis='normal', linestyle=linestyles['compare'][i]
-                    )
+            plot(args.spreading, 'radius', comp_shift, linestyles['compare'])
+    else:
+        for _type in ('left', 'right'):
+            plot(args.spreading, _type, shift, linestyles['line'])
+            if args.compare:
+                plot(args.spreading, _type, comp_shift, linestyles['compare'])
 
     plt.title(args.title)
     plt.xlabel(args.xlabel)
     plt.ylabel(args.ylabel)
+
+    plt.axis('normal')
 
     plt.xlim([args.t0, args.tend])
 
@@ -98,6 +108,8 @@ if __name__ == '__main__':
                     "for error (default: 1)")
     line.add_argument('--compare', action='store_true',
             help="draw the other synchronisation type as a line for comparison")
+    line.add_argument('--radius', action='store_true',
+            help="use the radius instead of edges for drawing")
 
     # Decoration options
     decoration = parser.add_argument_group(title="Graph decoration",
