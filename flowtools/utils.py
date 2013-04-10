@@ -69,7 +69,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
                     data=data[i].spread[val]['val'],
                     index=data[i].times
                     )
-        data[i].times = (np.array(data[i].times) - shift[i]) / 1000
+        data[i].times = (np.array(data[i].times) - shift[i])
 
     spread = Spread()
 
