@@ -6,13 +6,13 @@ import pylab as plt
 
 from flowtools.datamaps import Spread
 from flowtools.draw import plot_line
-from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels, get_linestyles, get_shift
+from flowtools.utils import calc_radius, combine_spread, get_colours, get_linestyles, get_shift
 from scipy import optimize
 
 def spread_plot(args):
     """Draw the spreading as a function of time."""
 
-    # Get colours, labels and line styles from default
+    # Get colours and line styles from default
     colours = get_colours(args.colour, len(args.spreading))
 
     linestyles = {}
@@ -26,6 +26,7 @@ def spread_plot(args):
 
     # Find shift array for synchronisation
     shift_array = get_shift(args.spreading, sync=args.sync)
+    impact_shift = get_shift(args.spreading, sync='impact')
 
     # Create dicts for lists of fit constants (r = amp * t**index)
     amp = {}
@@ -45,8 +46,12 @@ def spread_plot(args):
         indexError[i] = []
 
         spread, full_data = combine_spread(spread_list, shift=shift_array[i])
+        spread.times = np.array(spread.times) - spread.times[0]
 
-        for data in full_data:
+        for k, _file in enumerate(spread_list):
+            data = Spread().read(_file)
+            data.times = np.array(data.times) - impact_shift[i][k]
+
             # Get radius and domain
             radius = {'real': np.array(calc_radius(data))}
             domain = {'real': np.array(data.times)}
@@ -63,10 +68,9 @@ def spread_plot(args):
 
             # Cut in log range
             for j, logt in enumerate(domain['log']):
-                if logt > args.logend:
+                if logt > args.tendlog:
                     radius['log'] = radius['log'][:j]
                     domain['log'] = domain['log'][:j]
-
 
             # Fit constants to data
             out = optimize.leastsq(fitfunc, pinit,
@@ -85,7 +89,7 @@ def spread_plot(args):
                 plot_line(
                         line=radius['log'],
                         domain=domain['log'],
-                        color=colours[i], label=labels[i],
+                        color=colours[i],
                         linestyle=linestyles['line'][i]
                     )
                 plot_line(
@@ -140,34 +144,48 @@ def spread_plot(args):
 
     # Default xlabel and xlims based on draw method
     if args.draw == 'real':
+        if args.ylabel == None:
+            args.ylabel = "rom center of mass (nm)"
         if args.xlabel == None:
-            args.xlabel = 'Time (ps)'
-        if (args.tend and args.logend) < np.inf:
-            plt.xlim([None, min(args.tend, 10**args.logend)])
+            args.xlabel = "Time (ps)"
+        if (args.tend and args.tendlog) < np.inf:
+            plt.xlim([None, min(args.tend, 10**args.tendlog)])
     elif args.draw == 'log':
+        if args.ylabel == None:
+            args.ylabel = "log10 of radius (in nm)"
         if args.xlabel == None:
-            args.xlabel = 'log10 of time (in ps)'
-        if (args.tend and args.logend) < np.inf:
-            plt.xlim([None, min(args.tend, args.logend)])
+            args.xlabel = "log10 of time (in ps)"
+        if (args.tend and args.tendlog) < np.inf:
+            plt.xlim([None, min(args.tend, args.tendlog)])
 
     plt.xlabel(args.xlabel, fontsize='medium')
     plt.ylabel(args.ylabel, fontsize='medium')
 
-    # Finish by saving and / or showing
-    if args.save:
-        plt.savefig(args.save)
+    if args.xlim:
+        plt.xlim(args.xlim)
 
+    # Print collected output
+    print("Fitting spread radius 'R' of input file sets to power law functions "
+            "of time 't' as 'R = C * (t ** n)' and taking means:")
     for i, _ in enumerate(amp):
+        print()
         # If nomean, print individual line values
         if args.nomean:
             for values in zip(amp[i], ampError[i], index[i], indexError[i]):
-                print('%f +/- %f' % (values[0], values[1]), end=', ')
-                print('%f +/- %f' % (values[2], values[3]))
-            print('  -> ', end='')
+                print("%f +/- %f" % (values[0], values[1]), end=', ')
+                print("%f +/- %f" % (values[2], values[3]))
 
         # Print mean values
-        print('%f +/- %f' % (ampMean[i], ampMeanError[i]), end=', ')
-        print('%f +/- %f' % (indexMean[i], indexMeanError[i]))
+        if args.nomean:
+            print("  -> ", end='')
+        print("C = %f +/- %f" % (ampMean[i], ampMeanError[i]))
+        if args.nomean:
+            print("  -> ", end='')
+        print("n = %f +/- %f" % (indexMean[i], indexMeanError[i]))
+
+    # Finish by saving and / or showing
+    if args.save:
+        plt.savefig(args.save)
 
     if args.draw != 'off':
         plt.show()
@@ -185,21 +203,12 @@ if __name__ == '__main__':
     line.add_argument('-s', '--save', metavar="PATH",
             help="optionally save output image to path")
 
-    # --show or --noshow for drawing figure
-    line_show = line.add_mutually_exclusive_group()
-    line_show.add_argument('--show', action='store_true', dest='show',
-            default=True,
-            help=("show graph (default: true, --noshow to turn off)"))
-    line_show.add_argument('--noshow', action='store_false', dest='show',
-            help=argparse.SUPPRESS)
-
-    line.add_argument('--sync', choices=['com', 'impact'], default='com',
+    line.add_argument('--sync', choices=['com', 'impact'], default='impact',
             help="synchronise times of different data to a common distance "
-            "to the center of mass ('com', default), or to time of impact "
-            "('impact')")
+            "to the center of mass time of impact (default: 'impact')")
     line.add_argument('-tend', type=float, default=np.inf, metavar="TIME",
             help="maximum time for fit")
-    line.add_argument('-logend', type=float, default=np.inf,
+    line.add_argument('-tendlog', type=float, default=np.inf,
             metavar="TIME", help="maximum log10 of time for fit")
 
     # Specifially add --nomean to plot
@@ -245,8 +254,9 @@ if __name__ == '__main__':
     decoration.add_argument('--xlabel', metavar="LABEL",
             default=None, help="label of x axis")
     decoration.add_argument('--ylabel', metavar="LABEL",
-            default="Spreading from center of mass (nm)",
-            help="label of y axis")
+            default=None, help="label of y axis")
+    decoration.add_argument('--xlim', nargs=2, type=float, default=None,
+            help="manual control of xaxis limits")
 
     # Call appropriate function for operation
     args = parser.parse_args()
