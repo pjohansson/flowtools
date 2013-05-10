@@ -1002,6 +1002,10 @@ class DataMap(object):
                 if field in fields:
                     print('%9c' % field, end=' ')
             print()
+            for field in order:
+                if field in fields:
+                    print("----------", end='')
+            print()
 
             return None
 
