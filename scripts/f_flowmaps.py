@@ -52,7 +52,7 @@ draw_args.add_argument('--xmax', type=float, default=None, metavar='X')
 draw_args.add_argument('--xmin', type=float, default=None, metavar='X')
 draw_args.add_argument('--ymax', type=float, default=None, metavar='Y')
 draw_args.add_argument('--ymin', type=float, default=None, metavar='Y')
-draw_args.add_argument('--axis', default='equal')
+draw_args.add_argument('--axis', default='scaled')
 draw_args.add_argument('--colour', default='blue', help="quiver arrow colour")
 draw_args.add_argument('--scale', type=float, default=None,
         help="arrow scale for quiver")
@@ -79,6 +79,9 @@ args = parser.parse_args()
 if not (args.save or args.show):
     parser.error("at least one of --show or --save has to be specififed")
 
+xlims = [args.xmin, args.xmax]
+ylims = [args.ymin, args.ymax]
+
 # Create system
 system = System(base = args.base)
 system.files(start = args.start, end = args.end)
@@ -95,7 +98,7 @@ for frame, _file in enumerate(system.datamaps):
     datamap.flow(
             show = args.show, save = save, dpi = args.dpi,
             temp = args.temp, clim = [args.Tmin, args.Tmax],
-            color = args.colour, xlim = [args.xmin, args.xmax],
+            color = args.colour, xlim = xlims, ylim = ylims,
             axis = args.axis,
             width = args.width, scale = args.scale,
             xlabel = args.xlabel, ylabel = args.ylabel, title = args.title

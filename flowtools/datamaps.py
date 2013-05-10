@@ -34,6 +34,7 @@ import math
 import numpy as np
 import os
 import pylab as plt
+import struct
 
 class Spread(object):
     """
@@ -985,6 +986,57 @@ class DataMap(object):
 
         return None
 
+    def print(self, droplet=False, order=['X', 'Y', 'N', 'T', 'M', 'U', 'V'],
+            **kwargs):
+        """
+        Print data map fields. By default prints all cells, specify keywords
+        droplet = True to only print those as part of droplet cells. The
+        order of printed fields can be changed by supplying a new.
+
+        """
+
+        def print_header(fields, order):
+            """Print header from order."""
+
+            for field in order:
+                if field in fields:
+                    print('%9c' % field, end=' ')
+            print()
+
+            return None
+
+        def print_cell(cell, order):
+            """Print cell in order."""
+
+            for field in order:
+                if field in cell:
+                    print('%9.3f' % cell[field], end=' ')
+            print()
+
+            return None
+
+        def to_print(cell, droplet):
+            """Check if cell should be printed."""
+
+            if not droplet:
+                return True
+            else:
+                return cell['droplet']
+
+        # If only part of droplet desired and not already controlled for,
+        # control all cells
+        if droplet and 'droplet' not in self.cells[0][0].keys():
+            self.droplet(**kwargs)
+
+        # Print header and then cells
+        print_header(self.cells[0][0].keys(), order)
+        for row in self.cells:
+            for cell in row:
+                if to_print(cell, droplet):
+                    print_cell(cell, order)
+
+        return None
+
     def save(self, _path, fields=['X', 'Y', 'N', 'T', 'M', 'U', 'V']):
         """
         Save data map to file at given path.
@@ -1154,26 +1206,92 @@ class DataMap(object):
 
         """
 
-        data = {field: None for field in self.fields}
-        cells = []
+        def is_binary(_path, checksize=512):
+            """
+            Returns True of data file is binary format, else False.
 
-        with open(self.path, 'r') as _file:
-            # Assert that header contains desired fields
-            header = _file.readline().strip().upper().split()
-            if not self.fields.issubset(header):
-                raise Exception
+            """
 
-            # Read in header order until EOF
-            line = _file.readline().strip().split()
-            while line:
-                for i, add in enumerate(line):
-                    if header[i] in self.fields:
-                        data[header[i]] = float(add)
-                cells.append(data.copy())
+            with open(_path, 'r') as _file:
+                try:
+                    line = _file.read(checksize)
+                    if '\n' in line:
+                        return False
+                    else:
+                        raise UnicodeDecodeError
+
+                except UnicodeDecodeError:
+                    return True
+
+        def read_binary(_path, bytes_per_val=4):
+            """
+            Read the data from a binary data file.
+
+            """
+
+            def bytes_from_file(_path, chunksize=7168):
+                """
+                Read and return chunks of bytes from file.
+
+                """
+
+                with open(_path, 'rb') as _file:
+                    while True:
+                        chunk = _file.read(chunksize)
+                        if chunk:
+                            yield chunk
+                        else:
+                            break
+
+                return None
+
+            # Order of fields must not change
+            fields = ['X', 'Y', 'N', 'T', 'M', 'U', 'V']
+            data = {field: None for field in fields}
+            size = bytes_per_val * len(fields)
+            cells = []
+
+            for chunk in bytes_from_file(_path):
+                lines = [chunk[i:i+size] for i in range(0, len(chunk), size)]
+                for line in lines:
+                    for i, value in enumerate(struct.unpack('fffffff', line)):
+                        data[fields[i]] = value
+                    cells.append(data.copy())
+
+            return cells
+
+        def read_plaintext(_path, fields):
+            """
+            Read the data from a plain text data file.
+
+            """
+
+            data = {field: None for field in fields}
+            cells = []
+
+            with open(_path, 'r') as _file:
+                # Assert that header contains desired fields
+                header = _file.readline().strip().upper().split()
+                if not fields.issubset(header):
+                    raise Exception
+
+                # Read in header order until EOF
                 line = _file.readline().strip().split()
+                while line:
+                    for i, add in enumerate(line):
+                        if header[i] in self.fields:
+                            data[header[i]] = float(add)
+                    cells.append(data.copy())
+                    line = _file.readline().strip().split()
+
+            return cells
+
+        if is_binary(self.path):
+            cells = read_binary(self.path)
+        else:
+            cells = read_plaintext(self.path, self.fields)
 
         self.cells = np.array(cells)
-        return None
 
     def _grid(self):
         """Rearrange data map cells into 2d numpy array."""
