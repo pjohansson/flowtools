@@ -45,3 +45,6 @@ nosetests.xml
 *.png
 img
 include
+
+# Working directory
+working/

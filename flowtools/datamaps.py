@@ -358,7 +358,7 @@ class System(object):
         delta_t - the difference in time between DataMaps
         droplet_columns - an option for DataMap.droplet
         files - create file names from a base
-        floor - the collective floor of the system
+        floor - the collective floor row number of the system
         info - collective information of the system
         min_mass - an option for DataMap.droplet
         x - position along x of column
@@ -395,6 +395,8 @@ class System(object):
             end - frame number to end with
 
         """
+
+        print(kwargs)
 
         def create(base, frame, numdigits, ext):
             # Create variable-digits string
@@ -526,7 +528,7 @@ class System(object):
         for i, _file in enumerate(self.datamaps):
             # Print status if desired
             if kwargs.get('print', True):
-                print("\rReading '%s' (%d of %d)"
+                print("\rReading '%s' (%d of %d) ..."
                         % (_file, i + 1, len(self.datamaps)), end = ' '
                         )
 

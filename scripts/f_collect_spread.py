@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser()
 
 # Required arguments
 parser.add_argument('base', help="file name base of system")
-parser.add_argument('floor', help="floor of the system", type=int)
+parser.add_argument('floor', type=int, help="floor row number of the system")
 parser.add_argument('save', help="file for saving spread data to")
 
 # Optional arguments
