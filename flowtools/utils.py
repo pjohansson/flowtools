@@ -46,8 +46,8 @@ def calc_radius(spread, error=False):
     else:
         std_error = {'left': [], 'right': []}
         for key in std_error.keys():
-            std_error[key] = np.array(spread.spread[key]['std_error'])**2
-        return radius, np.sqrt(std_error['right'] + std_error['left'])
+            std_error[key] = np.array(spread.spread[key]['std'])**2
+        return list(np.sqrt(std_error['right'] + std_error['left']))
 
 def combine_spread(spread_files, shift, drop_return_data=False):
     """
@@ -72,6 +72,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
         data[i].times = (np.array(data[i].times) - shift[i])
 
     spread = Spread()
+    spread.spread['num'] = len(spread_files)
 
     for val in values.keys():
 
@@ -98,7 +99,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
 
         # Add to Spread object
         spread.spread[val]['val'] = mean
-        spread.spread[val]['std_error'] = std_error
+        spread.spread[val]['std'] = std_error
         spread.spread['times'] = times
 
     return spread, data

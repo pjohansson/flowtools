@@ -6,7 +6,7 @@ import pylab as plt
 
 from flowtools.datamaps import Spread
 from flowtools.draw import plot_line
-from flowtools.utils import calc_radius, combine_spread, get_colours, get_linestyles, get_shift
+from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels, get_linestyles, get_shift
 from scipy import optimize
 
 def spread_plot(args):
@@ -14,10 +14,11 @@ def spread_plot(args):
 
     # Get colours and line styles from default
     colours = get_colours(args.colour, len(args.spreading))
+    labels, draw_legend = get_labels(args.label, len(args.spreading))
 
     linestyles = {}
     linestyles['line'] = get_linestyles(args.linestyle, len(args.spreading))
-    linestyles['error'] = get_linestyles(args.errorstyle, len(args.spreading),
+    linestyles['fit'] = get_linestyles(args.fitstyle, len(args.spreading),
             'dashed')
 
     # Create linear fitting function
@@ -92,22 +93,24 @@ def spread_plot(args):
                         color=colours[i],
                         linestyle=linestyles['line'][i]
                     )
-                plot_line(
-                        line=out[0][0] + out[0][1] * domain['log'],
-                        domain=domain['log'],
-                        color=colours[i], linestyle='dashed'
-                        )
+                if not args.nofit:
+                    plot_line(
+                            line=out[0][0] + out[0][1] * domain['log'],
+                            domain=domain['log'],
+                            color=colours[i], linestyle=linestyles['fit'][i]
+                            )
             if args.draw == 'real' and args.nomean:
                 plot_line(
                         line=radius['real'],
                         domain=domain['real'],
-                        color=colours[i], linestyle='solid'
+                        color=colours[i], linestyle=linestyles['line'][i]
                         )
-                plot_line(
-                        line=amp[i][-1] * (domain['real']**index[i][-1]),
-                        domain=domain['real'],
-                        color=colours[i], linestyle='dashed'
-                        )
+                if not args.nofit:
+                    plot_line(
+                            line=amp[i][-1] * (domain['real']**index[i][-1]),
+                            domain=domain['real'],
+                            color=colours[i], linestyle=linestyles['fit'][i]
+                            )
 
         ampMean.append(np.mean(amp[i]))
         ampMeanError.append(np.std(amp[i]) / np.sqrt(len(amp[i]) - 1))
@@ -119,33 +122,41 @@ def spread_plot(args):
                 plot_line(
                         line=np.log10(calc_radius(spread)),
                         domain=np.log10(spread.times),
-                        color=colours[i], linestyle='solid'
+                        label=labels[i],
+                        color=colours[i], linestyle=linestyles['line'][i]
                         )
-                plot_line(
-                        line=(np.log10(ampMean[i])
-                                + indexMean[i] * np.log10(spread.times)),
-                        domain=np.log10(spread.times),
-                        color=colours[i], linestyle='dashed'
-                        )
+                if not args.nofit:
+                    plot_line(
+                            line=(np.log10(ampMean[i])
+                                    + indexMean[i] * np.log10(spread.times)),
+                            domain=np.log10(spread.times),
+                            label='C=%.2f, n=%.2f'%(ampMean[i], indexMean[i]),
+                            color=colours[i], linestyle=linestyles['fit'][i]
+                            )
             if args.draw == 'real':
                 plot_line(
                         line=calc_radius(spread),
                         domain=spread.times,
-                        color=colours[i], linestyle='solid'
+                        label=labels[i],
+                        color=colours[i], linestyle=linestyles['line'][i]
                         )
-                plot_line(
-                        line=ampMean[i] * (domain['real']**indexMean[i]),
-                        domain=domain['real'],
-                        color=colours[i], linestyle='dashed'
-                        )
+                if not args.nofit:
+                    plot_line(
+                            line=ampMean[i] * (domain['real']**indexMean[i]),
+                            domain=domain['real'],
+                            label='C=%.2f, n=%.2f'%(ampMean[i], indexMean[i]),
+                            color=colours[i], linestyle=linestyles['fit'][i]
+                            )
 
     plt.title(args.title, fontsize='medium')
     plt.axis('normal')
 
+    plt.legend()
+
     # Default xlabel and xlims based on draw method
     if args.draw == 'real':
         if args.ylabel == None:
-            args.ylabel = "rom center of mass (nm)"
+            args.ylabel = "Spread radius (nm)"
         if args.xlabel == None:
             args.xlabel = "Time (ps)"
         if (args.tend and args.tendlog) < np.inf:
@@ -220,6 +231,8 @@ if __name__ == '__main__':
     line.add_argument('--draw', choices=['off', 'log', 'real'],
             default='real',
             help="choose output figure or turn off (default: real)")
+    line.add_argument('--nofit', action='store_true',
+            help="don't fit data to curves")
 
     # Error plotting
     error = parser.add_argument_group(title="Error",
@@ -243,10 +256,12 @@ if __name__ == '__main__':
             description="options for decorating the graph")
     decoration.add_argument('-c', '--colour', action='append', default=[],
             help="line colour, add once per line")
+    decoration.add_argument('-l', '--label', action='append', default=[],
+            help="line label, add once per line")
     decoration.add_argument('--linestyle', action='append', default=[],
             choices=['solid', 'dashed', 'dashdot', 'dotted'],
             help="line style (default: solid)")
-    decoration.add_argument('--errorstyle', action='append', default=[],
+    decoration.add_argument('--fitstyle', action='append', default=[],
             choices=['solid', 'dashed', 'dashdot', 'dotted'],
             help="error line style (default: dashed)")
     decoration.add_argument('--title',

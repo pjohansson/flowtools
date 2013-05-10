@@ -11,11 +11,81 @@ from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels
 def spread_plot(args):
     """Draw the spreading as a function of time."""
 
-    def get_line(spread, _type):
-        if _type == 'left' or _type == 'right':
-            return spread.spread[_type]['val']
-        elif _type == 'radius':
-            radius = calc_radius(spread)
+    def plot_data(data):
+        """Plot either edges or radius of specified line."""
+
+        if args.radius:
+            plot_line(
+                    line=get_line(data, 'radius'),
+                    domain=data.times,
+                    color=colours[i], label=label,
+                    linestyle=linestyles['line'][i]
+                )
+        else:
+            plot_line(
+                    line=get_line(data, 'left'),
+                    domain=data.times,
+                    color=colours[i], label=label,
+                    linestyle=linestyles['line'][i]
+                )
+            plot_line(
+                    line=get_line(data, 'right'),
+                    domain=data.times,
+                    color=colours[i],
+                    linestyle=linestyles['line'][i]
+                )
+
+        return None
+
+    def plot_error(data):
+        """Plot the error of either the edges or radius of a line."""
+
+        def plot_error_line(edge):
+
+            _line = np.array(get_line(data, edge))
+            std = np.array(get_line(data, edge, error=True))
+
+            # To line, add either standard deviation or standard error times
+            # a Z-score
+            if args.std:
+                add = std
+            else:
+                add = (std / np.sqrt(spread.spread['num']))*args.sigma
+
+            plot_line(
+                    line=(_line + add),
+                    domain=data.times,
+                    color=colours[i],
+                    linestyle=linestyles['error'][i]
+                )
+            plot_line(
+                    line=(_line - add),
+                    domain=data.times,
+                    color=colours[i],
+                    linestyle=linestyles['error'][i]
+                )
+
+            return None
+
+        if args.radius:
+            plot_error_line('radius')
+        else:
+            plot_error_line('left')
+            plot_error_line('right')
+
+        return None
+
+    def get_line(spread, edge, error=False):
+        """Return a desired line to plot."""
+
+        _type = 'val'
+        if error:
+            _type = 'std'
+
+        if edge == 'left' or edge == 'right':
+            return spread.spread[edge][_type]
+        elif edge == 'radius':
+            radius = calc_radius(spread, error)
             return radius
 
     # Get colours, labels and line styles from default
@@ -34,51 +104,19 @@ def spread_plot(args):
         spread, data = combine_spread(spread_list, shift=shift_array[i])
 
         # If --nomean, draw lines here
+        label = labels[i]
         if args.nomean:
-            label = labels[i]
             for spread_data in data:
-                if args.radius:
-                    plot_line(
-                            line=get_line(spread_data, 'radius'),
-                            domain=spread_data.times,
-                            color=colours[i], label=label,
-                            linestyle=linestyles['line'][i]
-                        )
-                else:
-                    plot_line(
-                            line=get_line(spread_data, 'left'),
-                            domain=spread_data.times,
-                            color=colours[i], label=label,
-                            linestyle=linestyles['line'][i]
-                        )
-                    plot_line(
-                            line=get_line(spread_data, 'right'),
-                            domain=spread_data.times,
-                            color=colours[i], label=label,
-                            linestyle=linestyles['line'][i]
-                        )
+                plot_data(spread_data)
                 label = '_nolegend_'
+
+        # Else draw the mean result
         else:
-            if args.radius:
-                plot_line(
-                    line=get_line(spread, 'radius'),
-                    domain=spread.times,
-                    color=colours[i], label=labels[i],
-                    linestyle=linestyles['line'][i]
-                    )
-            else:
-                plot_line(
-                    line=get_line(spread, 'left'),
-                    domain=spread.times,
-                    color=colours[i], label=labels[i],
-                    linestyle=linestyles['line'][i]
-                    )
-                plot_line(
-                    line=get_line(spread, 'right'),
-                    domain=spread.times,
-                    color=colours[i], label=labels[i],
-                    linestyle=linestyles['line'][i]
-                    )
+            plot_data(spread)
+
+        # If error for line is desired, calculate and plot
+        if args.error:
+            plot_error(spread)
 
     plt.title(args.title, fontsize='medium')
     plt.xlabel(args.xlabel, fontsize='medium')
@@ -93,7 +131,11 @@ def spread_plot(args):
 
     # Finish by saving and / or showing
     if args.save:
-        plt.savefig(args.save)
+        plt.savefig(
+                args.save, dpi=args.dpi,
+                transparent=True,
+                bbox_inches='tight'
+                )
 
     if args.show:
         plt.show()
@@ -110,6 +152,8 @@ if __name__ == '__main__':
             help="list of spreading data files")
     line.add_argument('-s', '--save', metavar="PATH",
             help="optionally save output image to path")
+    line.add_argument('--dpi', type=int, default=150,
+            help="DPI of output image")
 
     # --show or --noshow for drawing figure
     line_show = line.add_mutually_exclusive_group()
@@ -139,13 +183,17 @@ if __name__ == '__main__':
     error_group = error.add_mutually_exclusive_group()
     error_group.add_argument('--error', action='store_true', dest='error',
             default=True,
-            help=("show error for lines if multiple files entered "
-                    "(default: true, --noerror to turn off)"))
+            help=("show standard deviation or error for lines if multiple "
+                "files entered (default: true, --noerror to turn off)"))
     error_group.add_argument('--noerror', action='store_false',
             dest='error', help=argparse.SUPPRESS)
 
+    # --std drawing standard deviation
+    error.add_argument('--std', action='store_true', dest='std',
+            help=("show standard deviation instead of standard error "
+                "(default: false)"))
     error.add_argument('--sigma', type=float, default=1.,
-            help="number of standard deviations from mean, or Z-score, "
+            help="number of standard errors from mean, or Z-score, "
                     "for error lines (default: 1)")
 
     # Decoration options
