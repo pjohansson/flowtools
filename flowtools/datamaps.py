@@ -989,9 +989,9 @@ class DataMap(object):
     def print(self, droplet=False, order=['X', 'Y', 'N', 'T', 'M', 'U', 'V'],
             **kwargs):
         """
-        Print data map fields. By default prints all cells, specify keywords
-        droplet = True to only print those as part of droplet cells. The
-        order of printed fields can be changed by supplying a new.
+        Print data map fields to stdout. By default prints all cells, specify
+        keywords droplet = True to only print those as part of droplet cells.
+        The order of printed fields can be changed by supplying another.
 
         """
 
