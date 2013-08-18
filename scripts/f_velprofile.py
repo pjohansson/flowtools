@@ -42,6 +42,10 @@ input_args.add_argument('--noshow', dest="show", action="store_false",
 input_args.add_argument('--print', action="store_true", help="print profile to stdout")
 input_args.add_argument('--nofit', action="store_false", dest="fit",
         help="do not make a linear fit for the velocity profile")
+input_args.add_argument('--error', action="store_true",
+        help="if --print specified, also print standard deviation for flow profile")
+input_args.add_argument('--quiet', '-q', action="store_true",
+        help="output less")
 
 # Options
 draw_args = parser.add_argument_group('draw options',
@@ -73,24 +77,25 @@ label_args.add_argument('--title', default='')
 args = parser.parse_args()
 
 profile = []
+std = []
+error = []
 height = []
 
 # Go through all rows and add upp flow for averaging from cells
 datamap = DataMap(args.datamap, min_mass=args.min_mass)
 
 for row in datamap.cells:
-    flow = 0.
-    num_cells = 0
+    flow = []
     y = row[0]['Y']
 
     for cell in row:
         if cell['M'] > args.min_mass:
-            flow += cell['U']
-            num_cells += 1
+            flow.append(cell['U'])
 
-    if flow != 0. and y >= args.ymin and y <= args.ymax:
-        flow /= num_cells
-        profile.append(flow)
+    if flow != [] and y >= args.ymin and y <= args.ymax:
+        profile.append(np.array(flow).mean())
+        std.append(np.array(flow).std())
+        error.append(std[-1]/(np.sqrt(np.array(flow).size)))
         height.append(y)
 
 
@@ -126,8 +131,17 @@ if draw_legend:
 
 # Print profile if wanted
 if args.print:
-    for h, flow in zip(height, profile):
-        print("%8.3f %12.6f" % (h, flow))
+    if not args.quiet:
+        print("%8s %12s" % ("Y", "U"), end=' ')
+        if args.error:
+            print("%12s %12s" %("std. error", "std"), end=' ')
+        print()
+
+    for h, flow, flowerror, flowstd in zip(height, profile, error, std):
+        print("%8.3f %12.6f" % (h, flow), end=' ')
+        if args.error:
+            print("%12.6f %12.6f" % (flowerror, flowstd), end=' ')
+        print()
 
 # Save if desired
 if args.save:
