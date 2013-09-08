@@ -36,7 +36,13 @@ parser = argparse.ArgumentParser(
 
 # Input base arguments
 input_args = parser.add_argument_group('input')
-input_args.add_argument('datamap', help="data map to plot profile for")
+input_args.add_argument('datamap', nargs='?',
+        help="specified data map to plot profile for, or a data map base for combining several "
+        "(see -n, -s for options)")
+input_args.add_argument('--number', '-n', type=int, default=0, dest='num_combine', metavar='N',
+        help="combine this many maps into a single profile")
+input_args.add_argument('--start', '-s', type=int, default=1, metavar='FRAME',
+        help="start combining from this data map frame number")
 input_args.add_argument('--noshow', dest="show", action="store_false",
         help="do not draw plot of profile")
 input_args.add_argument('--print', action="store_true", help="print profile to stdout")
@@ -50,6 +56,7 @@ input_args.add_argument('--quiet', '-q', action="store_true",
 # Options
 draw_args = parser.add_argument_group('draw options',
         'options detailing the output graph appearances')
+draw_args.add_argument('--draw_fit', action='store_true', help="overlay linear fit in plot")
 draw_args.add_argument('-c', '--colour', action='append', default=[], help="line colour")
 draw_args.add_argument('-l', '--label', action='append', default=[],
         help="line label, add once per line")
@@ -76,28 +83,57 @@ label_args.add_argument('--title', default='')
 # Parse and control for action
 args = parser.parse_args()
 
-profile = []
-std = []
-error = []
-height = []
+# Define system and add data maps
+system = System()
+if args.num_combine == 0:
+    system.datamaps.append(args.datamap)
+elif args.num_combine >= 1:
+    system.files(base=args.datamap, start=args.start, end=args.start+args.num_combine-1)
+else:
+    parser.error('negative -n supplied')
 
-# Go through all rows and add upp flow for averaging from cells
-datamap = DataMap(args.datamap, min_mass=args.min_mass)
+# Collect profile data into 2D arrays
+profile = {'data': [], 'count': [], 'std': [], 'error': []}
 
-for row in datamap.cells:
-    flow = []
-    y = row[0]['Y']
+for i, _file in enumerate(system.datamaps):
+    datamap = DataMap(_file, min_mass=args.min_mass)
+    height = {'data': []}
 
-    for cell in row:
-        if cell['M'] > args.min_mass:
-            flow.append(cell['U'])
+    for _type in profile.keys():
+        profile[_type].append([])
 
-    if flow != [] and y >= args.ymin and y <= args.ymax:
-        profile.append(np.array(flow).mean())
-        std.append(np.array(flow).std())
-        error.append(std[-1]/(np.sqrt(np.array(flow).size)))
-        height.append(y)
+    for row in datamap.cells:
+        count = 0
+        flow = []
+        y = row[0]['Y']
+        height['data'].append(y)
 
+        for cell in row:
+            if cell['M'] > args.min_mass:
+                flow.append(cell['U'])
+                count += 1
+            else:
+                flow.append(0.)
+
+        profile['data'][i].append(np.array(flow).mean())
+        profile['count'][i].append(count)
+        profile['std'][i].append(np.array(flow).std())
+        profile['error'][i].append(np.array(flow).std()/(np.sqrt(count)))
+
+# Combine data into single profile
+combined = {}
+combined['data'] = list(np.array(profile['data']).mean(axis=0))
+combined['count'] = list(np.array(profile['count']).mean(axis=0))
+combined['std'] = list(np.array(profile['data']).std(axis=0))
+combined['error'] = list(np.array(combined['std'])/np.sqrt(len(system.datamaps)))
+
+# If height inside desired and count is non-zero, add to final profile
+final = {'data': [], 'error': [], 'std': [], 'height': []}
+for i, (h, count) in enumerate(zip(height['data'], combined['count'])):
+    if h >= args.ymin and h <= args.ymax and count > 0:
+        final['height'].append(h)
+        for _type in ['data', 'std', 'error']:
+            final[_type].append(combined[_type][i])
 
 # Get some plot options
 colours = get_colours(args.colour, 2)
@@ -106,39 +142,46 @@ labels, draw_legend = get_labels(args.label, 2)
 plt.xlabel(args.xlabel)
 plt.ylabel(args.ylabel)
 plt.title(args.title)
-plt.plot(profile, height, color=colours[0], linestyle=linestyles[0], label=labels[0])
+plt.plot(final['data'], final['height'], color=colours[0], linestyle=linestyles[0], label=labels[0])
 
 # Calculate and print linear fit if wanted
 if args.fit:
     fitfunc = lambda p, h, f: f - p[0] - p[1] * h
     pinit = [1.0, 0.1]
     out = optimize.leastsq(fitfunc, pinit,
-        args=(np.array(height), np.array(profile)), full_output=1)
+        args=(np.array(final['height']), np.array(final['data'])), full_output=1)
 
     pfinal = out[0]
     A = pfinal[0]
     B = pfinal[1]
 
-    print("Linear fit of flow f as a function of height h, f = A + B * h:")
+    print("Linear fit of flow U as a function of height H, U = A + B * H:")
     print("A = %g" % A)
     print("B = %g" % B)
 
-    plt.plot(profile, (np.array(profile) - A) / B,
-            color=colours[1], label=labels[1], linestyle='dashed')
+    if args.draw_fit:
+        plt.plot(A + B * np.array(final['height']), final['height'],
+                color=colours[1], label=labels[1], linestyle='dashed')
 
 if draw_legend:
     plt.legend(loc=7)
 
 # Print profile if wanted
 if args.print:
+    print()
     if not args.quiet:
-        print("%8s %12s" % ("Y", "U"), end=' ')
+        print("%8s %12s" % ("H", "(avg) U"), end=' ')
+        if args.draw_fit:
+            print("%12s" % "(fit) U", end=' ')
         if args.error:
-            print("%12s %12s" %("std. error", "std"), end=' ')
+            print("%12s %12s" %("std error", "std"), end=' ')
         print()
 
-    for h, flow, flowerror, flowstd in zip(height, profile, error, std):
+    for h, flow, flowerror, flowstd in zip(
+            final['height'], final['data'], final['error'], final['std']):
         print("%8.3f %12.6f" % (h, flow), end=' ')
+        if args.draw_fit:
+            print("%12.6f" % (A + B * h), end=' ')
         if args.error:
             print("%12.6f %12.6f" % (flowerror, flowstd), end=' ')
         print()

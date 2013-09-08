@@ -396,8 +396,6 @@ class System(object):
 
         """
 
-        print(kwargs)
-
         def create(base, frame, numdigits, ext):
             # Create variable-digits string
             num = ('%%0%dd' % numdigits) % frame
