@@ -33,13 +33,13 @@ from pandas import DataFrame, Series
 
 import numpy as np
 
-def calc_radius(spread, error=False):
+def calc_radius(spread, error=False, diameter=False):
     """
-    Calculate and return a list of radius.
-
-    Supply error=True to return tuple of radius and error values.
+    Calculate and return a dictionary containing spreading radius,
+    diameter and errors.
 
     """
+
     radius = list((np.array(spread.right) - np.array(spread.left)) / 2)
     if not error:
         return radius
@@ -58,7 +58,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
 
     data = []
     values = {}
-    for val in ('left', 'right', 'com', 'dist'):
+    for val in ('left', 'right', 'com', 'dist', 'radius', 'diameter'):
         values[val] = {}
 
     # Collect data from all files into dictionaries

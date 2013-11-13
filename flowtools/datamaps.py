@@ -94,11 +94,27 @@ class Spread(object):
         return None
 
     @property
+    def diameter(self):
+        return self.spread['diameter']['val']
+    @diameter.setter
+    def diameter(self, _list):
+        self.spread['diameter']['val'] = _list
+        return None
+
+    @property
     def dist(self):
         return self.spread['dist']['val']
     @dist.setter
     def dist(self, _list):
         self.spread['dist']['val'] = _list
+        return None
+
+    @property
+    def radius(self):
+        return self.spread['radius']['val']
+    @radius.setter
+    def radius(self, _list):
+        self.spread['radius']['val'] = _list
         return None
 
     @property
@@ -254,10 +270,8 @@ class Spread(object):
             while not line.lower().startswith('spread:'):
                 if line.lower().startswith('floor'):
                     self.floor = int(line.split(':')[-1])
-
                 if line.lower().startswith('min mass'):
                     self.min_mass = float(line.split(':')[-1])
-
                 if line.lower().startswith('delta_t'):
                     self.delta_t = float(line.split(':')[-1])
 
@@ -276,6 +290,7 @@ class Spread(object):
 
                 line = _file.readline().strip()
 
+        self._calc_diamrad()
         return self
 
     def save(self, _path):
@@ -297,7 +312,7 @@ class Spread(object):
             _file.write("Spread:\n")
             header = ("%9s %9s %9s %9s %9s"
                     % (
-                        'left', 'right', 'com', 'times', 'dist'
+                        'left', 'right', 'diameter', 'radius', 'com', 'times', 'dist'
                         )
                     )
 
@@ -305,10 +320,11 @@ class Spread(object):
             _file.write(header)
 
             for i, _ in enumerate(self.times):
-                line = ("%9.3f %9.3f %9.3f %9.3f %9.3f"
+                line = ("%9.3f %9.3f %9.3f %9.3f %9.3f %9.3f %9.3f"
                         % (
-                            self.left[i], self.right[i], self.com[i],
-                            self.times[i], self.dist[i]
+                            self.left[i], self.right[i], self.diameter,
+                            self.radius, self.com[i], self.times[i],
+                            self.dist[i]
                             )
                         )
 
@@ -331,12 +347,21 @@ class Spread(object):
 
         return None
 
+    def _calc_diamrad(self):
+        """Calculate diameter and radius of spreading lists."""
+
+        for left, right in zip(self.spread['left']['val'], self.spread['right']['val']):
+            self.diameter.append(right - left)
+            self.radius.append(self.diameter[-1]/2)
+
+        return None
+
     def _reset(self):
         """Reset the system."""
 
         spread = {}
         spread['times'] = []
-        for field in ('left', 'right', 'com', 'dist'):
+        for field in ('left', 'right', 'com', 'dist', 'radius', 'diameter'):
             spread.update({field: {'val': [], 'std_error': []}})
 
         self.spread = spread
@@ -536,10 +561,8 @@ class System(object):
                     columns = self._droplet_columns
                     )
 
-            # Get edges of spread
-            edges = find_edges(datamap, self.floor)
-
             # If edges found, collect and append frame information
+            edges = find_edges(datamap, self.floor)
             if edges:
 
                 # At impact, get center of mass
@@ -550,6 +573,9 @@ class System(object):
                         edges, self.floor, self.delta_t, com_impact, datamap
                         )
                 self._spread._add(frame)
+
+        # Calculate diameter and radius of spreading
+        self._spread._calc_diamrad
 
         if kwargs.get('print', True):
             print()
