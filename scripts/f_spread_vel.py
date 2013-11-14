@@ -31,61 +31,15 @@ def vel_plot(args):
         """Plot either edges or radius of specified line."""
 
         for _type in args.plot_type:
+            velocity = spread[_type]['val']
             plot_line(
-                    line=spread[_type]['val'][1:],
-                    domain=times[1:],
+                    line=velocity,
+                    domain=times,
                     color=colours[i], label=label,
                     linestyle=linestyles['line'][i]
                 )
 
         return None
-
-    def plot_error(data):
-        """Plot the error of either the edges or radius of a line."""
-
-        def plot_error_line(edge):
-
-            _line = np.array(get_line(data, edge))
-            std = np.array(get_line(data, edge, error=True))
-
-            # To line, add either standard deviation or standard error times
-            # a Z-score
-            if args.std:
-                add = std
-            else:
-                add = (std / np.sqrt(spread.spread['num']))*args.sigma
-
-            plot_line(
-                    line=(_line + add),
-                    domain=data.times,
-                    color=colours[i],
-                    linestyle=linestyles['error'][i]
-                )
-            plot_line(
-                    line=(_line - add),
-                    domain=data.times,
-                    color=colours[i],
-                    linestyle=linestyles['error'][i]
-                )
-
-            return None
-
-        if args.radius:
-            plot_error_line('radius')
-        else:
-            plot_error_line('left')
-            plot_error_line('right')
-
-        return None
-
-    def get_line(spread, _type, error=False):
-        """Return a desired line to plot."""
-
-        _value = 'val'
-        if error:
-            _value = 'std'
-
-        return spread.spread[_type][_value]
 
     def calc_velocity(spread, plot_type, N, N_sample):
         """
@@ -98,31 +52,56 @@ def vel_plot(args):
             velocity = []
             for i, _ in enumerate(spreading):
                 i_min = max(0, i-N_sample)
-                delta_x = spreading[i] - spreading[i_min]
-                delta_t = times[i] - times[i_min]
+                i_max = min(i+N_sample, len(spreading)-1)
+                delta_x = spreading[i_max] - spreading[i_min]
+                delta_t = times[i_max] - times[i_min]
                 velocity.append(delta_x/delta_t)
 
             return velocity
 
-        def calc_running_avg(velocity, times, N):
+        def calc_running_avg(velocity, full_times, N):
+            N0 = N
             running_avg = {'val': [], 'std': []}
+            times = []
+
             for i, _ in enumerate(velocity):
+                if args.include == 'equal':
+                    N = min(i - max(0, i-N0), min(i+N0, len(velocity)-1)-i)
+
                 i_min = max(0, i-N)
+                i_max = min(i+N, len(velocity)-1)
 
-                _avg = np.average(velocity[i_min:i+1])
-                _std = np.std(velocity[i_min:i+1])
+                if N == 0 or (args.include == 'limited' and i_max - i_min != 2*N):
+                    continue
 
-                running_avg['val'].append(np.average(velocity[i_min:i+1]))
-                running_avg['std'].append(np.std(velocity[i_min:i+1]))
+                running_avg['val'].append(np.average(velocity[i_min:i_max+1]))
+                times.append(full_times[i])
 
-            return running_avg
+            return running_avg, times
 
         running_avg = {}
         for _type in plot_type:
             velocity = get_velocity(spread.spread[_type]['val'], spread.times, N_sample)
-            running_avg[_type] = calc_running_avg(velocity, spread.times, N)
+            running_avg[_type], times = calc_running_avg(velocity, spread.times, N)
 
-        return running_avg
+        return running_avg, times
+
+    def print_vel(velocity, times):
+        """Output the mean spread velocity to standard output."""
+
+        print("%9c Velocity of (nm / ps)" % ' ')
+        print("%9s " % "Time (ps)", end='')
+        for _key in velocity.keys():
+            print("%9s " % _key.capitalize(), end='')
+        print()
+
+        for i, time in enumerate(times[1:]):
+            print("%9g " % time, end='')
+            for _type in velocity.keys():
+                print("%9g " % velocity[_type]['val'][i+1], end='')
+            print()
+
+        return None
 
     # Get colours, labels and line styles from default
     colours = get_colours(args.colour, len(args.spreading))
@@ -130,8 +109,6 @@ def vel_plot(args):
 
     linestyles = {}
     linestyles['line'] = get_linestyles(args.linestyle, len(args.spreading))
-    linestyles['error'] = get_linestyles(args.errorstyle, len(args.spreading),
-            'dashed')
 
     # Find shift array for synchronisation
     shift_array = get_shift(args.spreading, sync=args.sync)
@@ -143,37 +120,44 @@ def vel_plot(args):
         label = labels[i]
         if args.nomean:
             for spread_data in data:
-                vel = calc_velocity(spread_data, args.plot_type, args.num_average, args.num_sample)
-                plot_data(vel, spread_data.times)
+                vel, times = calc_velocity(spread_data, args.plot_type,
+                        args.num_average, args.num_sample)
+                plot_data(vel, times)
                 label = '_nolegend_'
 
         # Else draw the mean result
         else:
-            vel = calc_velocity(spread, args.plot_type, args.num_average, args.num_sample)
-            plot_data(vel, spread.times)
-
-        # If error for line is desired, calculate and plot
-        if args.error:
-            plot_error(spread)
+            vel, times = calc_velocity(spread, args.plot_type,
+                    args.num_average, args.num_sample)
+            plot_data(vel, times)
 
     plt.title(args.title, fontsize='medium')
     plt.xlabel(args.xlabel, fontsize='medium')
     plt.ylabel(args.ylabel, fontsize='medium')
+
+    if args.loglog:
+        plt.xscale('log')
+        plt.yscale('log')
 
     plt.axis('normal')
 
     plt.xlim([args.t0, args.tend])
 
     if draw_legend:
-        plt.legend(loc=7)
+        plt.legend(loc=args.legend_loc)
 
     # Finish by saving and / or showing
     if args.save:
         plt.savefig(
                 args.save, dpi=args.dpi,
-                transparent=True,
+                transparent=args.transparent,
                 bbox_inches='tight'
                 )
+
+    if args.print:
+        if args.nomean:
+            vel = calc_velocity(spread, args.plot_type, args.num_average, args.num_sample)
+        print_vel(vel, spread.times)
 
     if args.show:
         plt.show()
@@ -198,42 +182,28 @@ if __name__ == '__main__':
     line.add_argument('--dpi', type=int, default=150,
             help="DPI of output image")
 
+    line.add_argument('--include', choices = ['full', 'equal', 'limited'],
+            help=("for the rolling mean, either keep calculations for all "
+                "samples (full), samples with an average from an equal number "
+                "of points on both sides of it (equal), or samples where "
+                "--num_average of points exist on both sides (limited)"))
+    line.add_argument('--loglog', action='store_true',
+            help="draw graph with logarithms of the x and y axis")
     line.add_argument('--noshow', action='store_false', dest='show',
             help=("do not show graph on screen"))
-
     line.add_argument('--sync', choices=['com', 'impact'], default='com',
             help="synchronise times of different data to a common distance "
             "to the center of mass ('com', default), or to time of impact "
             "('impact')")
 
-    # Specifially add --nomean to plot
     line.add_argument('--nomean', action='store_true',
             help="draw all spread curves instead of their combined mean")
-    line.add_argument('-t', '--plot_type', default='radius',
+    line.add_argument('-t', '--plot_type', default='diameter',
             choices=['edges', 'radius', 'diameter'],
             help="draw the velocity of edges, radius, or diameter of "
-            "droplet base (default: radius)")
-
-    # Error plotting
-    error = parser.add_argument_group(title="Error",
-            description="options for error of data")
-
-    # --error or --noerror for drawing error bars
-    error_group = error.add_mutually_exclusive_group()
-    error_group.add_argument('--error', action='store_true', dest='error',
-            default=True,
-            help=("show standard deviation or error for lines if multiple "
-                "files entered (default: true, --noerror to turn off)"))
-    error_group.add_argument('--noerror', action='store_false',
-            dest='error', help=argparse.SUPPRESS)
-
-    # --std drawing standard deviation
-    error.add_argument('--std', action='store_true', dest='std',
-            help=("show standard deviation instead of standard error "
-                "(default: false)"))
-    error.add_argument('--sigma', type=float, default=1.,
-            help="number of standard errors from mean, or Z-score, "
-                    "for error lines (default: 1)")
+            "droplet base (default: diameter)")
+    line.add_argument('--print', action='store_true',
+            help="Print spread velocity data to standard output")
 
     # Decoration options
     decoration = parser.add_argument_group(title="Graph decoration",
@@ -242,12 +212,18 @@ if __name__ == '__main__':
             help="line colour, add once per line")
     decoration.add_argument('-l', '--label', action='append', default=[],
             help="line label, add once per line")
+    decoration.add_argument("--legend_loc", type=str,
+            choices=[
+                "upper right", "upper left", "lower left",
+                "lower right", "right", "center left",
+                "center right", "lower center", 'upper center',
+                "center"],
+            default='center right', help="location of legend (default: center right)")
     decoration.add_argument('--linestyle', action='append', default=[],
             choices=['solid', 'dashed', 'dashdot', 'dotted'],
             help="line style (default: solid)")
-    decoration.add_argument('--errorstyle', action='append', default=[],
-            choices=['solid', 'dashed', 'dashdot', 'dotted'],
-            help="error line style (default: dashed)")
+    decoration.add_argument('--transparent', action='store_true',
+            help="figure saved with transparent background")
     decoration.add_argument('-t0', type=float, default=None, metavar="TIME",
             dest='t0', help="start time of graph (ps)")
     decoration.add_argument('-tend', type=float, default=None, metavar="TIME",
