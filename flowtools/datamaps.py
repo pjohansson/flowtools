@@ -312,7 +312,7 @@ class Spread(object):
             _file.write("Spread:\n")
             header = ("%9s %9s %9s %9s %9s"
                     % (
-                        'left', 'right', 'diameter', 'radius', 'com', 'times', 'dist'
+                        'left', 'right', 'com', 'times', 'dist'
                         )
                     )
 
@@ -320,11 +320,10 @@ class Spread(object):
             _file.write(header)
 
             for i, _ in enumerate(self.times):
-                line = ("%9.3f %9.3f %9.3f %9.3f %9.3f %9.3f %9.3f"
+                line = ("%9.3f %9.3f %9.3f %9.3f %9.3f"
                         % (
-                            self.left[i], self.right[i], self.diameter,
-                            self.radius, self.com[i], self.times[i],
-                            self.dist[i]
+                            self.left[i], self.right[i], self.com[i],
+                            self.times[i], self.dist[i]
                             )
                         )
 
@@ -332,6 +331,20 @@ class Spread(object):
                 _file.write(line)
 
             return None
+
+    def time_set(self, start=0.0, delta_t=0.0):
+        """Set the times array by supplying a time of initial frame
+        using 'start' and a time difference using 'delta_t'.
+
+        """
+
+        times = []
+        for i, _ in enumerate(self.times):
+            times.append(start + i*delta_t)
+
+        self.times = times.copy()
+
+        return None
 
     def _add(self, frame):
         """Add a frame of spreading."""

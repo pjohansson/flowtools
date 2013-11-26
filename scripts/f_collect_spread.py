@@ -37,6 +37,8 @@ parser.add_argument('save', help="file for saving spread data to")
 # Optional arguments
 parser.add_argument('-dt', '--delta_t', type=float, default=0.,
         help="time difference between frames")
+parser.add_argument('-t0', '--time_init', type=float, default=0.,
+        help="initial time of frames")
 parser.add_argument('-m', '--min_mass', type=float, default=0.,
         help="minimum mass of droplet cells")
 parser.add_argument('-s', '--start', type=int, default=1,
@@ -57,6 +59,7 @@ system = System(
 # Create file names and collect spread
 system.files(start = args.start, end = args.end)
 spread = system.spread()
+spread.time_set(start = args.time_init, delta_t = args.delta_t)
 
 # Save to file in same folder
 if args.relative:
