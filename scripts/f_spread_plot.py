@@ -82,6 +82,28 @@ def spread_plot(args):
 
         return spread.spread[_type][_value]
 
+    def get_time_scaling(input_factors, num_factors, default=1.0):
+        """Get list of time scaling factors"""
+
+        all_factors = []
+
+        for i in range(0, num_factors):
+            if i < len(input_factors):
+                all_factors.append(input_factors[i])
+            else:
+                all_factors.append(default)
+
+        return all_factors
+
+    def apply_time_scaling(spread, all_data, scaling):
+        """Apply time scaling factors to lists."""
+
+        spread.times = list(np.array(spread.times)*scaling)
+        for i, data in enumerate(all_data):
+            all_data[i].times = list(np.array(data.times)*scaling)
+
+        return None
+
     # Get colours, labels and line styles from default
     colours = get_colours(args.colour, len(args.spreading))
     labels, draw_legend = get_labels(args.label, len(args.spreading))
@@ -91,13 +113,17 @@ def spread_plot(args):
     linestyles['error'] = get_linestyles(args.errorstyle, len(args.spreading),
             'dashed')
 
+    # Find time scaling for lines
+    time_scaling = get_time_scaling(args.time_scaling, len(args.spreading))
+
     # Find shift array for synchronisation
     shift_array = get_shift(args.spreading, sync=args.sync)
 
     for i, spread_list in enumerate(args.spreading):
         spread, data = combine_spread(spread_list, shift=shift_array[i])
+        apply_time_scaling(spread, data, time_scaling[i])
 
-        # If --nomean, draw lines here
+        # If no mean, draw individual lines here
         label = labels[i]
         if args.nomean:
             for spread_data in data:
@@ -162,6 +188,10 @@ if __name__ == '__main__':
             help="synchronise times of different data to a common distance "
             "to the center of mass ('com', default), or to time of impact "
             "('impact')")
+    line.add_argument('--time_scaling', '-ts', action='append',
+            metavar="FACTOR", type=float, default=[],
+            help="Scale time for spreading data by this factor, enter once "
+            "per line (default: 1.0)")
 
     line.add_argument('--nomean', action='store_true',
             help="don't take the mean of spread lines, "
