@@ -24,8 +24,41 @@ Script for plotting flow maps of a system and saving to a base.
 import argparse
 import numpy as np
 import os
+import pylab as plt
 
 from flowtools.datamaps import System, DataMap
+
+def draw_colourmap(densmap, quantity):
+    """
+    Draw a colour mesh map of a desired quantity for a given DataMap.
+
+    """
+
+    # Set quantity keyword
+    for value, keyword in zip(['mass', 'number', 'temp'], ['M', 'N', 'T']):
+        if quantity == value:
+            _type = keyword
+
+    # Initiate empty lists for cell values
+    x = []; y = []; values = []
+
+    # Get shape of system
+    shape = datamap.cells.T.shape
+
+    # With cells as a flat list, read values for position and quantity
+    with DataMap.FlatArray(datamap.cells) as cells:
+        for cell in cells:
+            x.append(cell['X'])
+            y.append(cell['Y'])
+            values.append(cell[_type])
+
+    # Draw quantity as 2D histogram for speed
+    plt.hist2d(x, y, weights=values, bins=shape)
+    plt.colorbar()
+    plt.show()
+
+    return None
+
 
 parser = argparse.ArgumentParser(
         description="Draw graphs of the flow in data maps.")
@@ -40,10 +73,15 @@ input_args.add_argument('-e', '--end', type=int, default=np.inf,
 
 # Output arguments
 output_args = parser.add_argument_group('output modes')
+output_args.add_argument('--type', '-t', default='flow',
+        choices=['flow', 'mass', 'number', 'temp'],
+        help="type of data to draw, 'flow' for a quiver of mass flow, "
+            "or using 'mass', 'number' (of atoms), 'temp' for colour meshes"
+            "of those respective quantities")
 output_args.add_argument('--show', action="store_true", help="show figures")
 output_args.add_argument('--save', default='', metavar='PATH',
         help="save images to this file base, conserving frame numbers")
-output_args.add_argument('--dpi', default=150, help="output graph dpi")
+output_args.add_argument('--dpi', default=150, type=int, help="output graph dpi")
 
 # Options
 draw_args = parser.add_argument_group('draw options',
@@ -95,11 +133,14 @@ for frame, _file in enumerate(system.datamaps):
         save = ''
 
     datamap = DataMap(_file, min_mass = args.min_mass)
-    datamap.flow(
-            show = args.show, save = save, dpi = args.dpi,
-            temp = args.temp, clim = [args.Tmin, args.Tmax],
-            color = args.colour, xlim = xlims, ylim = ylims,
-            axis = args.axis,
-            width = args.width, scale = args.scale,
-            xlabel = args.xlabel, ylabel = args.ylabel, title = args.title
-            )
+    if args.type == 'flow':
+        datamap.flow(
+                show = args.show, save = save, dpi = args.dpi,
+                temp = args.temp, clim = [args.Tmin, args.Tmax],
+                color = args.colour, xlim = xlims, ylim = ylims,
+                axis = args.axis,
+                width = args.width, scale = args.scale,
+                xlabel = args.xlabel, ylabel = args.ylabel, title = args.title
+                )
+    else:
+        draw_colourmap(datamap, args.type)

@@ -789,11 +789,103 @@ class DataMap(object):
 
         return _info
 
+    def combine(self, nx=1, ny=1):
+        """
+        Combine cells of DataMap into larger ones, the number of which given
+        by kwargs 'nx' and 'ny' for cells in x and y respectively. If an even
+        division cannot be found for these numbers, the remainder of cells
+        which could not be included in the combination are cut from the right
+        and top of the system.
+
+        """
+
+        def find_cells(cells, num_combine):
+            """Return two arrays respectively containing cell ranges in
+            x and y to cut.
+
+            """
+
+            cut = []
+            for var in ['X', 'Y']:
+                n = cells[var]
+                start = n*num_combine[var]
+                end = (n+1)*num_combine[var] - 1
+                cut.append([start, end])
+
+            return cut
+
+        def combine_cells(all_cells):
+            """Combine cell information of all cells in 'cells', return
+            as new cell.
+
+            """
+
+            with self.FlatArray(all_cells.cells) as cell_list:
+                final = cell_list[0]
+                for i, cell in enumerate(cell_list[1:]):
+                    # Add variables
+                    for var in ['X', 'Y', 'M', 'N']:
+                        final[var] += cell[var]
+
+                    # Add mass flow
+                    for var in ['U', 'V']:
+                        final[var] += cell['M']*cell[var]
+
+                    # Att temperate, scaled by N
+                    final['T'] += cell['T']*cell['N']
+                    final['droplet'] = final['droplet'] or cell['droplet']
+
+                # Average positions
+                for var in ['X', 'Y']:
+                    final[var] /= len(cell_list)
+
+                # Finalise mass flow
+                if final['M'] > 0:
+                    for var in ['U', 'V']:
+                        final[var] /= final['M']
+
+                # Finalise temperature
+                if final['N'] > 0:
+                    final['T'] /= final['N']
+
+            return final
+
+        num_combine = {'X': nx, 'Y': ny}
+
+        num_cells = {}
+        for var, n in self._info['cells']['num_cells'].items():
+            num_cells[var] = int(n/num_combine[var])
+
+        # Quickly create a DataMap of final size by cutting self
+        combined = DataMap(None)
+        combined.cells = self.cells[
+                0:num_cells['Y'],
+                0:num_cells['X']
+                ]
+        combined._info = combined.info
+
+        # Go through all cells in new system
+        for x in range(num_cells['X']):
+            for y in range(num_cells['Y']):
+
+                # Find cells to include
+                cell_num = {'X': x, 'Y': y}
+                cutx, cuty = find_cells(cell_num, num_combine)
+
+                # Combine cells
+                new = self.cut(cutx=cutx, cuty=cuty, input_is_cells=True)
+                combined.cells[y, x] = combine_cells(new)
+
+        return combined
+
     def cut(self, **kwargs):
         """
         Cut out a certain part of the system, specified by keywords
         'cutx' = [min(x), max(x)] and 'cuty' = [min(y), max(y)] in system
         positions that should be kept.
+
+        If cell indices instead of system positions are desired for cut,
+        specify keywords 'input_is_cells' = True.
 
         Returns a DataMap of the newly cut system, leaving the original intact.
 
@@ -817,15 +909,17 @@ class DataMap(object):
 
         cutx = kwargs.pop('cutx', [-np.inf, np.inf])
         cuty = kwargs.pop('cuty', [-np.inf, np.inf])
+        input_is_cells = kwargs.pop('input_is_cells', False)
 
         # Get information
         _info = self._info
 
         # Check system limits
-        cutx[0] = max(cutx[0], _info['size']['X'][0])
-        cutx[1] = min(cutx[1], _info['size']['X'][1])
-        cuty[0] = max(cuty[0], _info['size']['Y'][0])
-        cuty[1] = min(cuty[1], _info['size']['Y'][1])
+        if not input_is_cells:
+            cutx[0] = max(cutx[0], _info['size']['X'][0])
+            cutx[1] = min(cutx[1], _info['size']['X'][1])
+            cuty[0] = max(cuty[0], _info['size']['Y'][0])
+            cuty[1] = min(cuty[1], _info['size']['Y'][1])
 
         start = {
                 'X': _info['size']['X'][0],
@@ -838,14 +932,20 @@ class DataMap(object):
         num_cells = _info['cells']['num_cells']
 
         # Find cell interval to keep
-        cells = {
-                'X': min_max_cell(
-                    cutx, start['X'], cell_size['X'], num_cells['X']
-                    ),
-                'Y': min_max_cell(
-                    cuty, start['Y'], cell_size['Y'], num_cells['Y']
-                    )
-                }
+        if not input_is_cells:
+            cells = {
+                    'X': min_max_cell(
+                        cutx, start['X'], cell_size['X'], num_cells['X']
+                        ),
+                    'Y': min_max_cell(
+                        cuty, start['Y'], cell_size['Y'], num_cells['Y']
+                        )
+                    }
+        else:
+            cells = {
+                    'X': [cutx[0], cutx[1]],
+                    'Y': [cuty[0], cuty[1]]
+                    }
 
         # Create and copy cut data map
         data_map = DataMap(None)
