@@ -56,6 +56,7 @@ class Spread(object):
         plot - draw the spreading
         read - read spreading information from a file
         save - save spreading information to a file
+        scale_data - scale the position and time information
 
     """
 
@@ -331,6 +332,21 @@ class Spread(object):
                 _file.write(line)
 
             return None
+
+    def scale_data(self, time=1.0, radius=1.0):
+        """Scale spreading data time and position data by factors 'time'
+        and 'radius' respectively.
+
+        """
+
+        self.times = list(np.array(self.times)*time)
+        for _type in ['left', 'right', 'radius', 'diameter', 'dist', 'com']:
+            for key in self.spread[_type].keys():
+                self.spread[_type][key] = list(
+                        np.array(self.spread[_type][key])*radius
+                        )
+
+        return None
 
     def time_set(self, start=0.0, delta_t=0.0):
         """Set the times array by supplying a time of initial frame

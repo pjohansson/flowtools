@@ -82,25 +82,29 @@ def spread_plot(args):
 
         return spread.spread[_type][_value]
 
-    def get_time_scaling(input_factors, num_factors, default=1.0):
-        """Get list of time scaling factors"""
+    def get_scaling(input_time, input_radius,
+            num_factors, default=1.0):
+        """Get scaling factors for time and radii of all lines."""
 
-        all_factors = []
+        scaling = {}
+        input_factors = {'time': input_time, 'radius': input_radius}
 
-        for i in range(0, num_factors):
-            if i < len(input_factors):
-                all_factors.append(input_factors[i])
-            else:
-                all_factors.append(default)
+        for key in ['time', 'radius']:
+            scaling[key] = []
+            for i in range(0, num_factors):
+                if i < len(input_factors[key]):
+                    scaling[key].append(input_factors[key][i])
+                else:
+                    scaling[key].append(default)
 
-        return all_factors
+        return scaling
 
-    def apply_time_scaling(spread, all_data, scaling):
-        """Apply time scaling factors to lists."""
+    def apply_scaling(spread, all_data, scaling, num):
+        """Apply time and radius scaling onto all spread data."""
 
-        spread.times = list(np.array(spread.times)*scaling)
-        for i, data in enumerate(all_data):
-            all_data[i].times = list(np.array(data.times)*scaling)
+        spread.scale_data(scaling['time'][num], scaling['radius'][num])
+        for i, _ in enumerate(all_data):
+            all_data[i].scale_data(scaling['time'][num], scaling['radius'][num])
 
         return None
 
@@ -113,15 +117,16 @@ def spread_plot(args):
     linestyles['error'] = get_linestyles(args.errorstyle, len(args.spreading),
             'dashed')
 
-    # Find time scaling for lines
-    time_scaling = get_time_scaling(args.time_scaling, len(args.spreading))
+    # Find scaling factors for lines
+    scaling = get_scaling(args.time_scaling, args.radius_scaling,
+        len(args.spreading))
 
     # Find shift array for synchronisation
     shift_array = get_shift(args.spreading, sync=args.sync)
 
     for i, spread_list in enumerate(args.spreading):
         spread, data = combine_spread(spread_list, shift=shift_array[i])
-        apply_time_scaling(spread, data, time_scaling[i])
+        apply_scaling(spread, data, scaling, i)
 
         # If no mean, draw individual lines here
         label = labels[i]
@@ -191,6 +196,10 @@ if __name__ == '__main__':
     line.add_argument('--time_scaling', '-ts', action='append',
             metavar="FACTOR", type=float, default=[],
             help="Scale time for spreading data by this factor, enter once "
+            "per line (default: 1.0)")
+    line.add_argument('--radius_scaling', '-rs', action='append',
+            metavar="FACTOR", type=float, default=[],
+            help="Scale radius for spreading data by this factor, enter once "
             "per line (default: 1.0)")
 
     line.add_argument('--nomean', action='store_true',
