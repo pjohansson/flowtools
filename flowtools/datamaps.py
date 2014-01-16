@@ -333,17 +333,19 @@ class Spread(object):
 
             return None
 
-    def scale_data(self, time=1.0, radius=1.0):
-        """Scale spreading data time and position data by factors 'time'
-        and 'radius' respectively.
+    def scale_data(self, tau=1.0, R=1.0):
+        """
+        Rescale times t to t/tau and all positions l to l/R, where 'tau'
+        and 'R' are some input time and length scales ('R' presumably
+        the droplet radius).
 
         """
 
-        self.times = list(np.array(self.times)*time)
+        self.times = list(np.array(self.times)/tau)
         for _type in ['left', 'right', 'radius', 'diameter', 'dist', 'com']:
             for key in self.spread[_type].keys():
                 self.spread[_type][key] = list(
-                        np.array(self.spread[_type][key])*radius
+                        np.array(self.spread[_type][key])/R
                         )
 
         return None

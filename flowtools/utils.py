@@ -144,7 +144,8 @@ def get_linestyles(linestyles, num_lines, default='solid'):
 
     return linestyles
 
-def get_shift(spread_files_array, sync=None):
+def get_shift(spread_files_array, sync=None, radius_array=None,
+        radius_fraction=0.1):
     """
     Calculate the desired time shift for synchronisation, return as array
     with time shift values corresponding to file name positions.
@@ -163,7 +164,9 @@ def get_shift(spread_files_array, sync=None):
     # Find shift array depending on synchronisation
     shift_array = []
     for i, spread_files in enumerate(spread_files_array):
+        radius = radius_array[i]
         shift_array.append([])
+
         for _file in spread_files:
             data = Spread().read(_file)
 
@@ -173,6 +176,12 @@ def get_shift(spread_files_array, sync=None):
             elif sync == 'com':
                 j = 0
                 while data.dist[j] > min_dist:
+                    j += 1
+                shift = data.times[j]
+
+            elif sync == 'radius':
+                j = 0
+                while data.radius[j]/radius < radius_fraction:
                     j += 1
                 shift = data.times[j]
 

@@ -25,7 +25,7 @@ from flowtools.draw import plot_line
 from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels, get_linestyles, get_shift
 
 def spread_plot(args):
-    """Draw the spreading as a function of time."""
+    """Draw the spreading of sets of droplets as a function of time."""
 
     def plot_data(spread, times):
         """Plot either edges or radius of specified line."""
@@ -118,11 +118,12 @@ def spread_plot(args):
             'dashed')
 
     # Find scaling factors for lines
-    scaling = get_scaling(args.time_scaling, args.radius_scaling,
+    scaling = get_scaling(args.time_scaling, args.radius,
         len(args.spreading))
 
     # Find shift array for synchronisation
-    shift_array = get_shift(args.spreading, sync=args.sync)
+    shift_array = get_shift(args.spreading, sync=args.sync,
+            radius_array=scaling['radius'], radius_fraction=args.sync_radius_fraction)
 
     for i, spread_list in enumerate(args.spreading):
         spread, data = combine_spread(spread_list, shift=shift_array[i])
@@ -174,7 +175,17 @@ def spread_plot(args):
 
 if __name__ == '__main__':
     # Initiate subparsers for operations
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="""
+    Draw the spreading of sets of droplets as a function of time.
+
+    Different sets, corresponding to different involved substrates,
+    parameters or whatever choices, are supplied using -f. Sets can
+    contain multiple collected data files, separated by spaces--only
+    when another -f is supplied does a new set specification begin.
+    Error analysis is performed setwise. The output graph decorations
+    can be controlled on a per set basis by adding one flag per set.
+
+    """, usage="%(prog)s [-h] -f [SET 1] -f [SET 2] [...]")
 
     line = parser.add_argument_group(title="Main")
     line.add_argument('-f', '--files', dest='spreading', action='append',
@@ -189,18 +200,27 @@ if __name__ == '__main__':
             help="draw graph with logarithms of the x and y axis")
     line.add_argument('--noshow', action='store_false', dest='show',
             help="do not show graph on screen")
-    line.add_argument('--sync', choices=['com', 'impact'], default='com',
+    line.add_argument('--sync', choices=['com', 'impact', 'radius'], default='com',
             help="synchronise times of different data to a common distance "
-            "to the center of mass ('com', default), or to time of impact "
-            "('impact')")
+            "to the center of mass ('com', default), time of impact "
+            "('impact') or to a common fraction of spreading to droplet radius"
+            "('radius'). In the latter case, set fraction of droplet radius "
+            "using --sync_at_radius_fraction.")
+    line.add_argument('--sync_radius_fraction', '-%r', type=float, default=0.1,
+            metavar="FRACTION",
+            help="if --sync 'radius' specified, synchronise the times for "
+            "spreading data for when their spreading radius is this fraction "
+            "of their droplet radius, input using --radius (default: 0.1)")
+
     line.add_argument('--time_scaling', '-ts', action='append',
-            metavar="FACTOR", type=float, default=[],
-            help="Scale time for spreading data by this factor, enter once "
-            "per line (default: 1.0)")
-    line.add_argument('--radius_scaling', '-rs', action='append',
-            metavar="FACTOR", type=float, default=[],
-            help="Scale radius for spreading data by this factor, enter once "
-            "per line (default: 1.0)")
+            metavar="TAU", type=float, default=[],
+            help="Scale time to t' = t/TAU, where TAU is input once per "
+            "set of spreading data or defaulted to 1.")
+    line.add_argument('--radius', '-R', action='append',
+            metavar="R", type=float, default=[],
+            help="Scale lengths L of data to L' = L/R, where R is input once "
+            "per set of spreading data or defaulted to 1. Presumably this is "
+            "the droplet radius given in nm.")
 
     line.add_argument('--nomean', action='store_true',
             help="don't take the mean of spread lines, "
