@@ -49,7 +49,7 @@ def calc_radius(spread, error=False, diameter=False):
             std_error[key] = np.array(spread.spread[key]['std'])**2
         return list(np.sqrt(std_error['right'] + std_error['left']))
 
-def combine_spread(spread_files, shift, drop_return_data=False):
+def combine_spread(file_set, shift, drop_return_data=False):
     """
     Combine the spread of input files, return with mean and standard
     deviation calculated.
@@ -62,7 +62,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
         values[val] = {}
 
     # Collect data from all files into dictionaries
-    for i, _file in enumerate(spread_files):
+    for i, _file in enumerate(file_set):
         data.append(Spread().read(_file))
         for val in values.keys():
             values[val][i] = Series(
@@ -72,7 +72,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
         data[i].times = (np.array(data[i].times) - shift[i])
 
     spread = Spread()
-    spread.spread['num'] = len(spread_files)
+    spread.spread['num'] = len(file_set)
 
     for val in values.keys():
 
@@ -84,7 +84,7 @@ def combine_spread(spread_files, shift, drop_return_data=False):
         df = DataFrame(data=values[val])
 
         # If not a single file, keep only indices with at least two non-NaN
-        if len(spread_files) > 1:
+        if len(file_set) > 1:
             df = df.dropna()
 
         # If return data dropped, fill data here
@@ -144,10 +144,10 @@ def get_linestyles(linestyles, num_lines, default='solid'):
 
     return linestyles
 
-def get_shift(spread_files_array, sync=None, radius_array=None,
-        radius_fraction=0.1):
+def get_shift(spread_files_array, sync=None,
+        radius_array=None, radius_fraction=0.0):
     """
-    Calculate the desired time shift for synchronisation, return as array
+    Calculate the desired time shift for synchronisation, return as 2D array
     with time shift values corresponding to file name positions.
 
     """
@@ -155,19 +155,19 @@ def get_shift(spread_files_array, sync=None, radius_array=None,
     # If common center of mass for synchronisation desired, find minimum
     if sync == 'com':
         min_dist = np.inf
-        for spread_files in spread_files_array:
-            for _file in spread_files:
+        for file_set in spread_files_array:
+            for _file in file_set:
                 data = Spread().read(_file)
                 if data.dist[0] < min_dist:
                     min_dist = data.dist[0]
 
-    # Find shift array depending on synchronisation
-    shift_array = []
-    for i, spread_files in enumerate(spread_files_array):
+    # Find full shift array for chosen synchronisation type
+    full_shift = []
+    for i, file_set in enumerate(spread_files_array):
         radius = radius_array[i]
-        shift_array.append([])
+        full_shift.append([])
 
-        for _file in spread_files:
+        for _file in file_set:
             data = Spread().read(_file)
 
             if sync == 'impact':
@@ -188,6 +188,12 @@ def get_shift(spread_files_array, sync=None, radius_array=None,
             else:
                 shift = 0.
 
-            shift_array[i].append(shift)
+            full_shift[i].append(shift)
 
-    return shift_array
+    # Shift all lines to make the smallest shift impact at time zero
+    to_zero = min(min(full_shift))
+    for i, shift_set in enumerate(full_shift):
+        for j, _ in enumerate(shift_set):
+            full_shift[i][j] -= to_zero
+
+    return full_shift
