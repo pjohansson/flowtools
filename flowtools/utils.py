@@ -192,8 +192,8 @@ def get_shift(spread_files_array, sync=None,
 
     # Shift all lines to make the smallest shift impact at time zero
     to_zero = min(min(full_shift))
-    for i, shift_set in enumerate(full_shift):
-        for j, _ in enumerate(shift_set):
-            full_shift[i][j] -= to_zero
+    #for i, shift_set in enumerate(full_shift):
+    #    for j, _ in enumerate(shift_set):
+    #        full_shift[i][j] -= to_zero
 
     return full_shift

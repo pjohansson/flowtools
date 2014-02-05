@@ -28,7 +28,7 @@ import pylab as plt
 
 from flowtools.datamaps import System, DataMap
 
-def draw_colourmap(densmap, quantity):
+def draw_colourmap(densmap, quantity, xlims, ylims):
     """
     Draw a colour mesh map of a desired quantity for a given DataMap.
 
@@ -53,9 +53,13 @@ def draw_colourmap(densmap, quantity):
             values.append(cell[_type])
 
     # Draw quantity as 2D histogram for speed
-    plt.hist2d(x, y, weights=values, bins=shape)
+    plt.hist2d(x, y, weights=values, bins=shape)#, xlim=xlims, ylim=ylims)
+    plt.axis(args.axis)
+    plt.xlim(xlims)
+    plt.ylim(ylims)
     plt.colorbar()
     plt.show()
+#                axis = args.axis,
 
     return None
 
@@ -143,4 +147,4 @@ for frame, _file in enumerate(system.datamaps):
                 xlabel = args.xlabel, ylabel = args.ylabel, title = args.title
                 )
     else:
-        draw_colourmap(datamap, args.type)
+        draw_colourmap(datamap, args.type, xlims, ylims)

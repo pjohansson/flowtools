@@ -32,10 +32,11 @@ def spread_plot(args):
 
         for _type in plot_type:
             plot_line(
-                    line=spread[_type]['val'][1:],
-                    domain=times[1:],
+                    line=spread[_type]['val'][0:],
+                    domain=np.array(times[0:]),
                     color=colours[i], label=label,
-                    linestyle=linestyles['line'][i]
+                    linestyle=linestyles['line'][i],
+                    linewidth=2
                 )
 
         return None
@@ -174,7 +175,6 @@ def spread_plot(args):
     return None
 
 if __name__ == '__main__':
-    # Initiate subparsers for operations
     parser = argparse.ArgumentParser(description="""
     Draw the spreading of sets of droplets as a function of time.
 
@@ -225,10 +225,10 @@ if __name__ == '__main__':
     line.add_argument('--nomean', action='store_true',
             help="don't take the mean of spread lines, "
             "instead draw individually")
-    line.add_argument('-t', '--plot_type', default='diameter',
+    line.add_argument('-t', '--plot_type', default='radius',
             choices=['edges', 'radius', 'diameter'],
             help="draw the velocity of edges, radius, or diameter of "
-            "droplet base (default: diameter)")
+            "droplet base (default: radius)")
 
     # Error plotting
     error = parser.add_argument_group(title="Error",
@@ -265,7 +265,7 @@ if __name__ == '__main__':
                 "center right", "lower center", 'upper center',
                 "center"],
             default='center right', help="location of legend (default: center right)")
-    decoration.add_argument('--linestyle', action='append', default=[],
+    decoration.add_argument('--linestyle', '-ls', action='append', default=[],
             choices=['solid', 'dashed', 'dashdot', 'dotted'],
             help="line style (default: solid)")
     decoration.add_argument('--errorstyle', action='append', default=[],
@@ -288,8 +288,8 @@ if __name__ == '__main__':
             default="Spreading from center of mass (nm)",
             help="label of y axis")
 
-    # Call appropriate function for operation
     args = parser.parse_args()
+
 
     # Modify the plot type to allow for several edge plots
     if args.plot_type == 'edges':
