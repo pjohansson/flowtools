@@ -1354,7 +1354,7 @@ class DataMap(object):
             return None
         return wrapper
 
-    def _calc_viscous_dissipation(self, N, viscosity=0.642e-3,
+    def _calc_viscous_dissipation(self, N=1, viscosity=0.642e-3,
             width=1., delta_t=1.):
         """
         Calculate the viscous energy dissipation for each cell in a liquid
@@ -1423,8 +1423,8 @@ class DataMap(object):
             dudy = calc_central_difference(cells, 'U', N, dy, rows, [column])
             dvdy = calc_central_difference(cells, 'V', N, dy, rows, [column])
 
-            dissipation_per_time_and_volume = 2*viscosity*(dudx**2 + dvdy**2
-                    - (1/3)*(dudx + dvdy)**2) + viscosity*(dudy + dvdx)**2
+            dissipation_per_time_and_volume = viscosity*(2*(dudx**2 + dvdy**2
+                    - (1/3)*(dudx + dvdy)**2) + (dudy + dvdx)**2)
 
             return dissipation_per_time_and_volume*volume*delta_t
 
@@ -1433,6 +1433,10 @@ class DataMap(object):
 
         viscosity = convert_viscosity(viscosity)
 
+        for cell_row in self.cells:
+            for cell in cell_row:
+                cell['visc_dissipation'] = 0.
+
         for i, cell_row in enumerate(self.cells[N:-N]):
             row = i + N
             for j, cell in enumerate(cell_row[N:-N]):
@@ -1440,9 +1444,7 @@ class DataMap(object):
                 if cell['droplet']:
                     dissipation = dissipation_in_cell(self.cells,
                             row, column, viscosity, N, size, delta_t)
-                else:
-                    dissipation = 0.
-                self.cells[row][column]['visc_dissipation'] = dissipation
+                    self.cells[row][column]['visc_dissipation'] = dissipation
 
         return None
 
