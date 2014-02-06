@@ -1323,6 +1323,98 @@ class DataMap(object):
             return None
         return wrapper
 
+    def _calc_viscous_dissipation(self, N, viscosity=0.642e-3,
+            width=1., delta_t=1.):
+        """
+        Calculate the viscous energy dissipation for each cell in a liquid
+        with given viscosity by taking finite central differences over
+        surrounding N cells. A width and time step of system can be supplied
+        to vary output units from energy dissipation per unit volume and time
+        to absolute dissipation.
+
+        Viscosity input is given in Pa*s, width in nm and delta_t in ps.
+
+        Output energy dissipation is added as extra keyword 'visc_dissipation'
+        in cell data dictionary and is given in MD units (kJ*mol-1).
+
+        """
+
+        def calc_central_difference(cells, direction, N, dx,
+                diff_rows, diff_columns):
+            """
+            Calculate the central difference of cell flow along the
+            specified direction.
+
+            """
+
+            def get_cell_indices(rows, columns):
+                """Convert any combination of rows and columns to indices."""
+
+                indices = (
+                        {'row': rows[0], 'column': columns[0]},
+                        {'row': rows[-1], 'column': columns[-1]}
+                        )
+                return indices
+
+            if direction not in ['U', 'V']:
+                raise KeyError("Selected flow direction must be 'U' or 'V'")
+
+            indices = get_cell_indices(diff_rows, diff_columns)
+            difference = (cells[indices[1]['row']][indices[1]['column']][direction]
+                - cells[indices[0]['row']][indices[0]['column']][direction])
+
+            return difference/(2*N*dx)
+
+        def convert_viscosity(viscosity):
+            """
+            Convert viscosity from Pa*s to MD units kJ*ps*mol-1*nm-3.
+
+            """
+
+            return viscosity*(1e6/1.66054)
+
+        def dissipation_in_cell(cells, row, column, viscosity, N, size, delta_t):
+            """
+            Calculate the viscous dissipation in one cell.
+
+            """
+
+            dx = size['X']
+            dy = size['Y']
+            dz = size['Z']
+            volume = dx*dy*dz
+
+            rows = [row - N, row + N]
+            columns = [column - N, column + N]
+
+            dudx = calc_central_difference(cells, 'U', N, dx, [row], columns)
+            dvdx = calc_central_difference(cells, 'V', N, dx, [row], columns)
+            dudy = calc_central_difference(cells, 'U', N, dy, rows, [column])
+            dvdy = calc_central_difference(cells, 'V', N, dy, rows, [column])
+
+            dissipation_per_time_and_volume = 2*viscosity*(dudx**2 + dvdy**2
+                    - (1/3)*(dudx + dvdy)**2) + viscosity*(dudy + dvdx)**2
+
+            return dissipation_per_time_and_volume*volume*delta_t
+
+        size = self.info['cells']['size']
+        size['Z'] = width
+
+        viscosity = convert_viscosity(viscosity)
+
+        for i, cell_row in enumerate(self.cells[N:-N]):
+            row = i + N
+            for j, cell in enumerate(cell_row[N:-N]):
+                column = j + N
+                if cell['droplet']:
+                    dissipation = dissipation_in_cell(self.cells,
+                            row, column, viscosity, N, size, delta_t)
+                else:
+                    dissipation = 0.
+                self.cells[row][column]['visc_dissipation'] = dissipation
+
+        return None
+
     @__cells_droplet
     def _cells_flow(cell, **kwargs):
         """
