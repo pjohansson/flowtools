@@ -120,13 +120,16 @@ map_args = parser.add_argument_group('colour map drawing options',
 map_args.add_argument('--log', action='store_true',
         help="output the log of height map values")
 map_args.add_argument('--viscosity', '-vv', type=float, default=0.642e-3,
-        help="droplet viscosity used in viscosity dissipation energy calculation")
+        help="droplet viscosity (in Pa*s) used in viscosity dissipation"
+        "energy calculation")
 map_args.add_argument('--visc_num_cells', '-vN', type=int, default=1,
         help="number of cells used in viscosity dissipation energy calculation")
 map_args.add_argument('--visc_width', '-vw', type=float, default=1.,
-        help="droplet width used in viscosity dissipation energy calculation")
+        help="droplet width (in nm) used in viscosity dissipation energy calculation")
 map_args.add_argument('--visc_delta_t', '-vt', type=float, default=1.,
-        help="time used in viscosity dissipation energy calculation")
+        help="time (in ps) used in viscosity dissipation energy calculation")
+map_args.add_argument('--visc_mass_flow', action='store_true',
+        help="use mass flow as basis for viscous dissipation energy calculations")
 
 # Decorations
 label_args = parser.add_argument_group('label options',
@@ -172,5 +175,7 @@ for frame, _file in enumerate(system.datamaps):
                 )
     else:
         if args.type == 'visc':
-            datamap._calc_viscous_dissipation(args.visc_num_cells, args.viscosity, args.visc_width, args.visc_delta_t)
+            datamap._calc_viscous_dissipation(args.visc_num_cells,
+                    args.viscosity, args.visc_width, args.visc_delta_t,
+                    args.visc_mass_flow)
         draw_colourmap(datamap, args.type, xlims, ylims)
