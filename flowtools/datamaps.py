@@ -1355,7 +1355,7 @@ class DataMap(object):
         return wrapper
 
     def _calc_viscous_dissipation(self, N=1, viscosity=0.642e-3,
-            width=1., delta_t=1.):
+            width=1., delta_t=1., mass_flow=False):
         """
         Calculate the viscous energy dissipation for each cell in a liquid
         with given viscosity by taking finite central differences over
@@ -1391,8 +1391,23 @@ class DataMap(object):
                 raise KeyError("Selected flow direction must be 'U' or 'V'")
 
             indices = get_cell_indices(diff_rows, diff_columns)
-            difference = (cells[indices[1]['row']][indices[1]['column']][direction]
-                - cells[indices[0]['row']][indices[0]['column']][direction])
+            flow = [{}, {}]
+            for i, index in enumerate(indices):
+                flow[i]['mass'] = cells[index['row']][index['column']]['M']
+                flow[i]['flow'] = cells[index['row']][index['column']][direction]
+                flow[i]['mass_flow'] = flow[i]['mass']*flow[i]['flow']
+
+            if not mass_flow:
+                difference = flow[1]['flow'] - flow[0]['flow']
+            else:
+                total_mass = flow[0]['mass'] + flow[1]['mass']
+                if total_mass != 0.:
+                    difference = (flow[1]['mass_flow'] - flow[0]['mass_flow'])/total_mass
+                else:
+                    difference = 0.
+
+            if difference == 0.:
+                return difference
 
             return difference/(2*N*dx)
 
@@ -1404,9 +1419,11 @@ class DataMap(object):
 
             return viscosity*(1e6/1.66054)
 
-        def dissipation_in_cell(cells, row, column, viscosity, N, size, delta_t):
+        def dissipation_in_cell(cells, row, column, viscosity,
+                N, size, delta_t, mass_flow):
             """
-            Calculate the viscous dissipation in one cell.
+            Calculate the viscous dissipation in one cell. Base calculations
+            on mass flow by setting mass_flow to True.
 
             """
 
@@ -1442,8 +1459,8 @@ class DataMap(object):
             for j, cell in enumerate(cell_row[N:-N]):
                 column = j + N
                 if cell['droplet']:
-                    dissipation = dissipation_in_cell(self.cells,
-                            row, column, viscosity, N, size, delta_t)
+                    dissipation = dissipation_in_cell(self.cells, row, column,
+                            viscosity, N, size, delta_t, mass_flow)
                     self.cells[row][column]['visc_dissipation'] = dissipation
 
         return None
