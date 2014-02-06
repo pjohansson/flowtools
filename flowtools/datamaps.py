@@ -1354,6 +1354,29 @@ class DataMap(object):
             return None
         return wrapper
 
+    def _sum_viscous_dissipation(self, width=1., delta_t=1.,
+            N=1, viscosity=0.642e-3, mass_flow=False,
+            force=False):
+        """
+        Returns the total amount of energy being dissipated in the system
+        at this instant over a time frame set by delta_t.
+
+        Force recalculation of viscous dissipation by supplying force=True.
+
+        Options as for _calc_viscous_dissipation().
+
+        """
+
+        if force or 'visc_dissipation' not in self.cells[0][0].keys():
+            self._calc_viscous_dissipation(N, viscosity, width, delta_t, mass_flow)
+
+        energy = 0.
+        for cell_row in self.cells:
+            for cell in cell_row:
+                energy += cell['visc_dissipation']
+
+        return energy
+
     def _calc_viscous_dissipation(self, N=1, viscosity=0.642e-3,
             width=1., delta_t=1., mass_flow=False):
         """
