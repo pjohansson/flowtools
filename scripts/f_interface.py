@@ -33,7 +33,9 @@ parser = argparse.ArgumentParser(
 
 # Input base arguments
 input_args = parser.add_argument_group('input')
-input_args.add_argument('base', nargs='?', default=None, help="file name base of system, combine with --start and --end to work on range of maps using this base")
+input_args.add_argument('base', nargs='?', default=None,
+        help="file name base of system, combine with --start "
+            "and --end to work on range of maps using this base")
 input_args.add_argument('-s', '--start', type=int, default=1,
         help="initial frame number")
 input_args.add_argument('-e', '--end', type=int, default=np.inf,
