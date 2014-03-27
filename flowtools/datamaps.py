@@ -1070,7 +1070,7 @@ class DataMap(object):
         columns = kwargs.pop('columns', 1)
 
         # Call controllers in order
-        self._cells_flow()
+        #self._cells_flow()
         self._cells_min_mass(min_mass = min_mass)
         self._cells_inside(columns = columns)
 
@@ -1256,17 +1256,10 @@ class DataMap(object):
 
             for i, row in enumerate(self.cells):
                 for j, cell in enumerate(row):
-                    # Copy cell information to keywords
-                    kwargs['pos'] = {'column': j, 'row': i}
+                    kwargs['position'] = {'column': j, 'row': i}
                     kwargs['cell'] = cell
 
-                    # Default 'droplet' to True
-                    # Keep as True only if, and checker function returns it
-                    if not (
-                            cell.setdefault('droplet', True)
-                            and func(**kwargs)
-                            ):
-                        cell['droplet'] = False
+                    cell['droplet'] = func(**kwargs)
 
             return None
         return wrapper
@@ -1291,12 +1284,15 @@ class DataMap(object):
 
         """
 
-        return cell['M'] >= kwargs.get('min_mass', 0.)
+        if cell['M'] == 0.:
+            return False
+        else:
+            return cell['M'] >= kwargs.get('min_mass', 0.)
 
     @__cells_droplet
-    def _cells_inside(cells, pos, **kwargs):
+    def _cells_inside(cells, position, **kwargs):
         """
-        Check if cell at position pos is well connected to other droplet
+        Check if cell at position is well connected to other droplet
         cells, by going over a set of cells in columns around the considered,
         checking if any column within this range has a 'droplet' cell in the
         row above the current. If so, it is controlled if this cell is
@@ -1313,52 +1309,40 @@ class DataMap(object):
         A large column number may not cut out the precursor film on the
         substrate.
 
-        Depends on 'droplet' status being set in cells already.
+        Depends on 'droplet' status being set in cells already, since it only
+        removes.
 
         """
 
-        def check_cell(check, row, cell, cells):
-            """
-            Return True if column 'cell' is well connected to cell on
-            row above or belove 'row', starting at column 'check'.
+        num_columns = kwargs.get('columns')
+        row = position['row']
+        column = position['column']
 
-            """
+        # Add upper and lower rows to look in, inside of system
+        check_rows = list(filter(
+                lambda x: x >= 0 and x < cells.shape[0],
+                [row + 1, row - 1]
+                ))
 
-            # Get row to check
-            if row < cells.shape[0] - 1:
-                row += 1
-            else:
-                row -= 1
+        # Similarly for columns numbers to left and right
+        check_columns = [
+                list(filter(lambda x: x >= 0 and x < cells.shape[1], column))
+                for column in [
+                    range(column, column + num_columns + 1, 1),
+                    range(column, column - num_columns - 1, -1)
+                    ]
+                ]
 
-            # Get sign for movement
-            sign = int(math.copysign(1, cell - check))
+        for other_row in check_rows:
+            for dir_columns in check_columns:
+                for other_column in dir_columns:
+                    # If not connected in own row break
+                    if not cells[row][other_column]['droplet']:
+                        break
+                    # Connection found if connected in own and other row
+                    elif cells[other_row][other_column]['droplet']:
+                        return True
 
-            # Check if first check cell is droplet,
-            # then move to original and break if bad connection is found
-            if cells[row, check]['droplet']:
-                for column in list(range(check, cell, sign)):
-                    if (not cells[row, column]['droplet']
-                            and not cells[row, column + sign]['droplet']):
-                        return False
-            else:
-                return False
-            return True
-
-        # Set width and get shape of system into dict
-        width = kwargs.get('columns', 1)
-        _shape = dict(list(zip(['rows', 'columns'], cells.shape)))
-
-        # Go through columns inside width
-        columns = list(range(
-            pos['column'] - width, pos['column'] + width + 1
-            ))
-        columns.remove(pos['column'])
-
-        for i in columns:
-            # If current column inside row and connection found, return True
-            if (0 <= i < _shape['columns']
-                    and check_cell(i, pos['row'], pos['column'], cells)):
-                return True
         return False
 
     def _read(self):
