@@ -114,3 +114,5 @@ for frame, _file in enumerate(system.datamaps):
 
     if args.save != '':
         plt.savefig(save, dpi=args.dpi)
+
+    plt.clf()
