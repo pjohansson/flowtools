@@ -42,7 +42,10 @@ input_args.add_argument('-f', '--file', help="specific file to work on")
 
 # Output arguments
 output_args = parser.add_argument_group('output modes')
-output_args.add_argument('--noshow', action="store_false", dest='show', help="show figures")
+output_args.add_argument('-l', '--length', action='store_true',
+        help="output the interface length of maps")
+output_args.add_argument('--noshow', action="store_false", dest='show',
+        help="do not display figures")
 output_args.add_argument('--save', default='', metavar='PATH',
         help="save images to this file base, conserving frame numbers")
 output_args.add_argument('--dpi', default=150, type=int, help="output graph dpi")
@@ -50,13 +53,13 @@ output_args.add_argument('--dpi', default=150, type=int, help="output graph dpi"
 # Options
 draw_args = parser.add_argument_group('draw options',
         'options detailing the output graph appearances')
+draw_args.add_argument('-m', '--min_mass', type=float, default=0.,
+        metavar='MASS', help="minimum mass of cell to include")
 draw_args.add_argument('--xmax', type=float, default=None, metavar='X')
 draw_args.add_argument('--xmin', type=float, default=None, metavar='X')
 draw_args.add_argument('--ymax', type=float, default=None, metavar='Y')
 draw_args.add_argument('--ymin', type=float, default=None, metavar='Y')
 draw_args.add_argument('--axis', default='scaled')
-draw_args.add_argument('-m', '--min_mass', type=float, default=0.,
-        metavar='MASS', help="minimum mass of cell to include")
 
 # Decorations
 label_args = parser.add_argument_group('label options',
@@ -84,7 +87,10 @@ for frame, _file in enumerate(system.datamaps):
 
     # If saved figures desired construct filename
     if args.save:
-        save = '%s%05d%s' % (args.save, frame + args.start, '.png')
+        if args.base != None:
+            save = '%s%05d%s' % (args.save, frame + args.start, '.png')
+        else:
+            save = args.save
     else:
         save = ''
 
@@ -98,8 +104,11 @@ for frame, _file in enumerate(system.datamaps):
     plt.ylabel(args.ylabel)
     plt.title(args.title)
 
+    if args.length:
+        print(datamap._interface_length())
+
     if args.show:
         plt.show()
 
-    if args.save:
-        plt.save(save, dpi=args.dpi)
+    if args.save != '':
+        plt.savefig(save, dpi=args.dpi)
