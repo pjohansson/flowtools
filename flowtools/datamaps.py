@@ -640,11 +640,13 @@ class DataMap(object):
         com - get the center of mass of the system
         cut - return a new DataMap with cells inside a specified cut
         dens - plot the density field of the map
+        draw_interface - draw a contour of the interface
         droplet - mark cells as 'droplet' or not depending on conditions
         flow - plot flow fields of the map
         fields - get the fields of the droplet
         floor - get the lowest row of the system with 'droplet' cells
         info - get information from the DataMap
+        interface - get a list of droplet interface coordinates
         save - save the DataMap to a file
 
     Classes:
@@ -1041,6 +1043,34 @@ class DataMap(object):
 
         return None
 
+    def draw_interface(self, **kwargs):
+        """
+        Draw a contour of the droplet interface, as marked by edge
+        'droplet' cells.
+
+        See also:
+            self.interface()
+
+        """
+
+        @draw
+        def plot(**kwargs):
+            X = kwargs.get('X')
+            Y = kwargs.get('Y')
+            plt.plot(X, Y)
+
+        X, Y = self._get_interface()
+
+        kwargs.update({'X': X})
+        kwargs.update({'Y': Y})
+        kwargs.setdefault('xlabel', 'x (nm)')
+        kwargs.setdefault('ylabel', 'y (nm)')
+        kwargs.setdefault('title', 'Droplet interface')
+
+        plot(**kwargs)
+
+        return None
+
     def droplet(self, **kwargs):
         """
         Check entire system for droplet cells, flagging 'droplet' as
@@ -1142,6 +1172,35 @@ class DataMap(object):
         plot(x = x, y = y, u = u, v = v, t = t, **kwargs)
 
         return None
+
+    def interface(self):
+        """
+        Find interface cells of droplets and return ordered list of
+        cell center coordinates.
+
+        See also:
+            self.draw_interface()
+            self._get_interface()
+            self._interface_length()
+
+        """
+
+        cells = {'left': [], 'right': []}
+        for row in self.cells:
+            for cell in row:
+                if cell['droplet']:
+                    cells['left'].append([cell['X'], cell['Y']])
+                    break
+
+            for cell in reversed(row):
+                if cell['droplet']:
+                    cells['right'].append([cell['X'], cell['Y']])
+                    break
+
+        coordinates = cells['left']
+        coordinates.extend(reversed(cells['right']))
+
+        return coordinates
 
     def print(self, droplet=False, order=['X', 'Y', 'N', 'T', 'M', 'U', 'V'],
             **kwargs):
@@ -1333,17 +1392,48 @@ class DataMap(object):
                     ]
                 ]
 
+        # Go through rows and columns to left and right
         for other_row in check_rows:
             for dir_columns in check_columns:
                 for other_column in dir_columns:
-                    # If not connected in own row break
+                    # If not connected in own row break,
+                    # connection found if connected in own and other row
                     if not cells[row][other_column]['droplet']:
                         break
-                    # Connection found if connected in own and other row
                     elif cells[other_row][other_column]['droplet']:
                         return True
 
         return False
+
+    def _get_interface(self):
+        """
+        Returns separated lists of X and Y coordinates of interface.
+
+        X, Y = self._get_interface()
+
+        """
+
+        coordinates = self.interface()
+        X = [coord[0] for coord in coordinates]
+        Y = [coord[1] for coord in coordinates]
+
+        return X, Y
+
+    def _interface_length(self):
+        """
+        Returns the total length of the droplet interface.
+
+        """
+
+        length = 0.
+        interface = self.interface()
+
+        for i, _ in enumerate(interface[:-1]):
+            dx = interface[i+1][0] - interface[i][0]
+            dy = interface[i+1][1] - interface[i][1]
+            length += np.sqrt(dx**2 + dy**2)
+
+        return length
 
     def _read(self):
         """
