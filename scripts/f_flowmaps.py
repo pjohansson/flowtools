@@ -69,11 +69,14 @@ parser = argparse.ArgumentParser(
 
 # Input base arguments
 input_args = parser.add_argument_group('input')
-input_args.add_argument('base', help="file name base of system")
+input_args.add_argument('base', nargs='?', default=None,
+        help="file name base of system, combine with --start "
+            "and --end to work on range of maps using this base")
 input_args.add_argument('-s', '--start', type=int, default=1,
         help="initial frame number")
 input_args.add_argument('-e', '--end', type=int, default=np.inf,
         help="final frame number")
+input_args.add_argument('-f', '--file', help="specific file to work on")
 
 # Output arguments
 output_args = parser.add_argument_group('output modes')
@@ -82,7 +85,8 @@ output_args.add_argument('--type', '-t', default='flow',
         help="type of data to draw, 'flow' for a quiver of mass flow, "
             "or using 'mass', 'number' (of atoms), 'temp' for colour meshes"
             "of those respective quantities")
-output_args.add_argument('--show', action="store_true", help="show figures")
+output_args.add_argument('--noshow', action="store_false", dest='show',
+        help="do not display figures")
 output_args.add_argument('--save', default='', metavar='PATH',
         help="save images to this file base, conserving frame numbers")
 output_args.add_argument('--dpi', default=150, type=int, help="output graph dpi")
@@ -118,23 +122,30 @@ label_args.add_argument('--title', default='')
 
 # Parse and control for action
 args = parser.parse_args()
-if not (args.save or args.show):
-    parser.error("at least one of --show or --save has to be specififed")
 
 xlims = [args.xmin, args.xmax]
 ylims = [args.ymin, args.ymax]
 
-# Create system
-system = System(base = args.base)
-system.files(start = args.start, end = args.end)
+# If base given, create system
+if args.base != None:
+    system = System(base = args.base)
+    system.files(start = args.start, end = args.end)
+
+else:
+    system = System()
+    system.datamaps = [args.file]
 
 for frame, _file in enumerate(system.datamaps):
 
     # If saved figures desired construct filename
     if args.save:
-        save = '%s%05d%s' % (args.save, frame + args.start, '.png')
+        if args.base != None:
+            save = '%s%05d%s' % (args.save, frame + args.start, '.png')
+        else:
+            save = args.save
     else:
         save = ''
+
 
     datamap = DataMap(_file, min_mass = args.min_mass)
     if args.type == 'flow':
