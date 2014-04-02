@@ -46,6 +46,14 @@ input_args.add_argument('-f', '--file', help="specific file to work on")
 output_args = parser.add_argument_group('output modes')
 output_args.add_argument('-l', '--length', action='store_true',
         help="output the interface length of maps")
+output_args.add_argument('-a', '--angle', action='store_true',
+        help="output the contact angles of maps")
+output_args.add_argument('--floor', type=int, default=0,
+        help="floor cell for contact angle calculation")
+output_args.add_argument('--num_layers', type=int, default=1,
+        help="number of cells in height over which to calculate contact angles")
+output_args.add_argument('--mean', action='store_true',
+        help="if outputting contact angles, output mean of left and right")
 output_args.add_argument('--noshow', action="store_false", dest='show',
         help="do not display figures")
 output_args.add_argument('--save', default='', metavar='PATH',
@@ -72,6 +80,9 @@ label_args.add_argument('--title', default='')
 
 # Parse
 args = parser.parse_args()
+
+if args.length and args.angle:
+    parser.error("will not output both contact angles (--angle) and interface lengths (--length)")
 
 xlims = [args.xmin, args.xmax]
 ylims = [args.ymin, args.ymax]
@@ -108,6 +119,13 @@ for frame, _file in enumerate(system.datamaps):
 
     if args.length:
         print(datamap._interface_length())
+
+    if args.angle:
+        ca = datamap.contactangle(args.num_layers, args.floor)
+        if not args.mean:
+            print(ca[0], ca[1])
+        else:
+            print(np.mean(ca))
 
     if args.show:
         plt.show()
