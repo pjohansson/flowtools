@@ -898,6 +898,37 @@ class DataMap(object):
 
         return combined
 
+    def contactangle(self, num_layers=1, floor=0):
+        """
+        Returns the left and right contact angles in degrees calculated
+        from the interface. The angle is calculated by a trigonometric
+        fit from the cell at 'floor' and 'num_layers' above.
+
+        Requires self.droplet to have been run.
+
+        """
+
+        def angle(cells, mid):
+            dx = np.abs(mid - cells['bottom'][0]) - np.abs(mid - cells['top'][0])
+            dy = cells['top'][1] - cells['bottom'][1]
+            return np.arccos(dx/np.sqrt(dx**2 + dy**2))*180/np.pi
+
+        if floor < 0 or num_layers < 1:
+            raise Exception(
+                "Angles can only be calculated if floor (%d) is non-negative "
+                "and num_layers (%d) is positive integer" % (floor, num_layers)
+                )
+
+        interface = self.interface()
+        if floor+num_layers > len(interface)/2:
+            raise Exception("Trying to calculate angle from cells outside of droplet height")
+
+        left = {'bottom': interface[floor], 'top': interface[floor+num_layers]}
+        right = {'bottom': interface[-(floor+1)], 'top': interface[-(floor+num_layers+1)]}
+        mid = (right['bottom'][0] + left['bottom'][0])/2
+
+        return [angle(cell, mid) for cell in [left, right]]
+
     def cut(self, **kwargs):
         """
         Cut out a certain part of the system, specified by keywords
