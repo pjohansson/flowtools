@@ -25,6 +25,7 @@ import argparse
 import numpy as np
 import os
 import pylab as plt
+import sys
 
 from flowtools.datamaps import System, DataMap
 from flowtools.draw import plot_line
@@ -53,6 +54,8 @@ input_args.add_argument('--delta_t', '-dt', type=float, default=1, metavar='DT',
 input_args.add_argument('--noshow', dest="show", action="store_false",
         help="do not draw plot of shear per map")
 input_args.add_argument('--print', action="store_true", help="print profile to stdout")
+input_args.add_argument('--all', action="store_true",
+        help="draw or print all shear values along an axis, not just max")
 
 # Options
 draw_args = parser.add_argument_group('draw options',
@@ -81,6 +84,11 @@ label_args.add_argument('--title', default='Maximum found shear of system per ti
 # Parse and control for action
 args = parser.parse_args()
 
+# Plot options
+colours = get_colours(args.colour, 2)
+linestyles = get_linestyles(args.linestyle, 2)
+labels, draw_legend = get_labels(args.label, 2)
+
 # Define system and add data maps
 system = System()
 system.files(base=args.datamap, start=args.begin, end=args.end)
@@ -98,11 +106,13 @@ rows = [floor, ceil]
 
 for i, _file in enumerate(system.datamaps):
     print("Reading %s (%d of %d) ... " % (_file, i+1, len(system.datamaps)), end='')
+    sys.stdout.flush()
     datamap = DataMap(_file, min_mass=args.min_mass)
     print("Done!")
 
     dy = datamap.info['cells']['size']['Y']
     shear = []
+    xarray = []
 
     for col in range(datamap.info['cells']['num_cells']['X']):
         U = [0., 0.]
@@ -113,6 +123,7 @@ for i, _file in enumerate(system.datamaps):
                 U[j] = datamap.cells[row][col]['U']
 
             shear.append(abs(U[1] - U[0])/dy)
+            xarray.append(datamap.cells[0][col]['X'])
         except Exception:
             next
 
@@ -120,20 +131,27 @@ for i, _file in enumerate(system.datamaps):
         frames.append((i+args.begin)*args.delta_t)
         max_shear.append(max(shear))
 
+    if args.all:
+        if args.print:
+            for x, val in zip(xarray, shear):
+                print("%g %g" % (x, val))
+
+        if args.show:
+            plt.plot(xarray, shear, color=colours[0], linestyle=linestyles[0], label=labels[0])
+            plt.show()
+            plt.clf()
+            plt.xlabel(args.xlabel)
+            plt.ylabel(args.ylabel)
+            plt.title(args.title)
+
 # Get some plot options
-colours = get_colours(args.colour, 2)
-linestyles = get_linestyles(args.linestyle, 2)
-labels, draw_legend = get_labels(args.label, 2)
 plt.xlabel(args.xlabel)
 plt.ylabel(args.ylabel)
 plt.title(args.title)
 plt.plot(frames, max_shear, color=colours[0], linestyle=linestyles[0], label=labels[0])
 
-if draw_legend:
-    plt.legend(loc=7)
-
 # Print profile if wanted
-if args.print:
+if args.print and not args.all:
     print()
     for t, shear in zip(frames, max_shear):
         print("%g %g" % (t, shear))
@@ -143,5 +161,5 @@ if args.save:
     plt.savefig(args.save, dpi=args.dpi)
 
 # Show figure if wanted
-if args.show:
+if args.show and not args.all:
     plt.show()
