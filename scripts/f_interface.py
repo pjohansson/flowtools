@@ -121,7 +121,11 @@ for frame, _file in enumerate(system.datamaps):
         print(datamap._interface_length())
 
     if args.angle:
-        ca = datamap.contactangle(args.num_layers, args.floor)
+        try:
+            ca = datamap.contactangle(args.num_layers, args.floor)
+        except Exception:
+            ca = [0, 0]
+
         if not args.mean:
             print(ca[0], ca[1])
         else:
