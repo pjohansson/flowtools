@@ -27,7 +27,6 @@ import os
 import pylab as plt
 
 from flowtools.datamaps import System, DataMap
-from matplotlib.colors import LogNorm, Normalize
 
 def draw_colourmap(densmap, quantity, xlims, ylims):
     """
@@ -36,8 +35,7 @@ def draw_colourmap(densmap, quantity, xlims, ylims):
     """
 
     # Set quantity keyword
-    for value, keyword in zip(['mass', 'number', 'temp', 'visc'],
-            ['M', 'N', 'T', 'visc_dissipation']):
+    for value, keyword in zip(['mass', 'number', 'temp', 'shear'], ['M', 'N', 'T', 'shear']):
         if quantity == value:
             _type = keyword
 
@@ -55,37 +53,46 @@ def draw_colourmap(densmap, quantity, xlims, ylims):
             values.append(cell[_type])
 
     # Draw quantity as 2D histogram for speed
-    plt.hist2d(x, y, weights=values, bins=shape, norm=normalise)
+    plt.hist2d(x, y, weights=values, bins=shape, cmin=args.Tmin, cmax=args.Tmax)#, xlim=xlims, ylim=ylims)
     plt.axis(args.axis)
     plt.xlim(xlims)
     plt.ylim(ylims)
     plt.colorbar()
-    plt.show()
-#                axis = args.axis,
+
+    if save:
+        plt.savefig(save, dpi=args.dpi)
+
+    if args.show:
+        plt.show()
+
+    plt.clf()
 
     return None
+
 
 parser = argparse.ArgumentParser(
         description="Draw graphs of the flow in data maps.")
 
 # Input base arguments
 input_args = parser.add_argument_group('input')
-input_args.add_argument('base', help="file name base of system")
+input_args.add_argument('base', nargs='?', default=None,
+        help="file name base of system, combine with --start "
+            "and --end to work on range of maps using this base")
 input_args.add_argument('-s', '--start', type=int, default=1,
         help="initial frame number")
 input_args.add_argument('-e', '--end', type=int, default=np.inf,
         help="final frame number")
+input_args.add_argument('-f', '--file', help="specific file to work on")
 
 # Output arguments
 output_args = parser.add_argument_group('output modes')
 output_args.add_argument('--type', '-t', default='flow',
-        choices=['flow', 'mass', 'number', 'temp', 'visc'],
+        choices=['flow', 'mass', 'number', 'temp', 'shear'],
         help="type of data to draw, 'flow' for a quiver of mass flow, "
-            "or using 'mass', 'number' (of atoms), 'temp' for colour meshes"
+            "or using 'mass', 'number' (of atoms), 'temp', 'shear' for colour meshes"
             "of those respective quantities")
-output_args.add_argument('-m', '--min_mass', type=float, default=0.,
-        metavar='MASS', help="minimum mass of cell to include")
-output_args.add_argument('--noshow', action="store_true", help="show figures")
+output_args.add_argument('--noshow', action="store_false", dest='show',
+        help="do not display figures")
 output_args.add_argument('--save', default='', metavar='PATH',
         help="save images to this file base, conserving frame numbers")
 output_args.add_argument('--dpi', default=150, type=int, help="output graph dpi")
@@ -98,38 +105,24 @@ draw_args.add_argument('--xmin', type=float, default=None, metavar='X')
 draw_args.add_argument('--ymax', type=float, default=None, metavar='Y')
 draw_args.add_argument('--ymin', type=float, default=None, metavar='Y')
 draw_args.add_argument('--axis', default='scaled')
-
-# Flow options
-flow_args = parser.add_argument_group('flow drawing options',
-        "options detailing the output of mass flow graphs")
-flow_args.add_argument('--colour', default='blue', help="quiver arrow colour")
-flow_args.add_argument('--scale', type=float, default=None,
+draw_args.add_argument('--colour', default='blue', help="quiver arrow colour")
+draw_args.add_argument('--scale', type=float, default=None,
         help="arrow scale for quiver")
-flow_args.add_argument('--width', type=float, default=None,
+draw_args.add_argument('--width', type=float, default=None,
         help="arrow width for quiver")
-flow_args.add_argument('--temp', action="store_true",
+draw_args.add_argument('-m', '--min_mass', type=float, default=0.,
+        metavar='MASS', help="minimum mass of cell to include")
+draw_args.add_argument('--temp', action="store_true",
         help="colour flow map with temperature")
-flow_args.add_argument('--Tmin', type=float, default=None, metavar='T',
+draw_args.add_argument('--Tmin', type=float, default=None, metavar='T',
         help="bottom temperature colour at this value")
-flow_args.add_argument('--Tmax', type=float, default=None, metavar='T',
+draw_args.add_argument('--Tmax', type=float, default=None, metavar='T',
         help="top temperature colour at this value")
-
-# Colour map options
-map_args = parser.add_argument_group('colour map drawing options',
-        "options detailing the output of colour maps (see also --Tmin and --Tmax)")
-map_args.add_argument('--log', action='store_true',
-        help="output the log of height map values")
-map_args.add_argument('--viscosity', '-vv', type=float, default=0.642e-3,
-        help="droplet viscosity (in Pa*s) used in viscosity dissipation"
-        "energy calculation")
-map_args.add_argument('--visc_num_cells', '-vN', type=int, default=1,
-        help="number of cells used in viscosity dissipation energy calculation")
-map_args.add_argument('--visc_width', '-vw', type=float, default=1.,
-        help="droplet width (in nm) used in viscosity dissipation energy calculation")
-map_args.add_argument('--visc_delta_t', '-vt', type=float, default=1.,
-        help="time (in ps) used in viscosity dissipation energy calculation")
-map_args.add_argument('--visc_mass_flow', action='store_true',
-        help="use mass flow as basis for viscous dissipation energy calculations")
+draw_args.add_argument('--shear_numcells', '-sn', type=int, default=1,
+        metavar='N', help="number of cells to take finite difference over for "
+        "shear calculation")
+draw_args.add_argument('--shear_massflow', action='store_true',
+        help="use mass flow when calculation shear in cells")
 
 # Decorations
 label_args = parser.add_argument_group('label options',
@@ -140,30 +133,35 @@ label_args.add_argument('--title', default='')
 
 # Parse and control for action
 args = parser.parse_args()
-if args.noshow and not args.save:
-    parser.error("at least one of --show or --save has to be specififed")
 
 xlims = [args.xmin, args.xmax]
 ylims = [args.ymin, args.ymax]
 
-if args.log:
-    normalise = LogNorm(vmin=args.Tmin, vmax=args.Tmax)
-else:
-    normalise = Normalize(vmin=args.Tmin, vmax=args.Tmax)
+# If base given, create system
+if args.base != None:
+    system = System(base = args.base)
+    system.files(start = args.start, end = args.end)
 
-# Create system
-system = System(base = args.base)
-system.files(start = args.start, end = args.end)
+else:
+    system = System()
+    system.datamaps = [args.file]
 
 for frame, _file in enumerate(system.datamaps):
 
     # If saved figures desired construct filename
     if args.save:
-        save = '%s%05d%s' % (args.save, frame + args.start, '.png')
+        if args.base != None:
+            save = '%s%05d%s' % (args.save, frame + args.start, '.png')
+        else:
+            save = args.save
     else:
         save = ''
 
+
+    print("Reading %s (%d of %d) ... " % (_file, frame+1, len(system.datamaps)), end='')
     datamap = DataMap(_file, min_mass = args.min_mass)
+    print("Done!")
+
     if args.type == 'flow':
         datamap.flow(
                 show = args.show, save = save, dpi = args.dpi,
@@ -174,8 +172,6 @@ for frame, _file in enumerate(system.datamaps):
                 xlabel = args.xlabel, ylabel = args.ylabel, title = args.title
                 )
     else:
-        if args.type == 'visc':
-            datamap._calc_viscous_dissipation(args.visc_num_cells,
-                    args.viscosity, args.visc_width, args.visc_delta_t,
-                    args.visc_mass_flow)
+        if args.type == 'shear':
+            datamap._calc_cell_shear(args.shear_numcells, args.shear_massflow)
         draw_colourmap(datamap, args.type, xlims, ylims)

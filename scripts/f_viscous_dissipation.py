@@ -117,8 +117,8 @@ draw_args.add_argument('--axis', default='on')
 # Decorations
 label_args = parser.add_argument_group('label options',
         'pick labels for output figures')
-label_args.add_argument('--xlabel', default='Position (nm)')
-label_args.add_argument('--ylabel', default='Height (nm)')
+label_args.add_argument('--xlabel', default='Time (ps)')
+label_args.add_argument('--ylabel', default='Dissipated energy (kJ/mol)')
 label_args.add_argument('--title', default='')
 
 args = parser.parse_args()
@@ -162,6 +162,9 @@ if args.slip:
 plt.axis(args.axis)
 plt.xlim(xlims)
 plt.ylim(ylims)
+plt.xlabel(args.xlabel)
+plt.ylabel(args.ylabel)
+plt.title(args.title)
 
 if args.save:
     plt.savefig(args.save, dpi=args.dpi, bbox_inches='tight')

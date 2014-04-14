@@ -1346,6 +1346,104 @@ class DataMap(object):
 
         return energy
 
+    def _calc_cell_shear(self, N=1, mass_flow=False):
+        """
+        Calculate the fluid shear inside all cells by taking finite central
+        differences over surrounding N cells. Shear in terms of 1/ps saved
+        as keyword 'shear' in droplet cell dictionaries.
+
+        """
+
+        def calc_central_difference(cells, direction, N, dx,
+                diff_rows, diff_columns):
+            """
+            Calculate the central difference of cell flow along the
+            specified direction.
+
+            """
+
+            def get_cell_indices(rows, columns):
+                """Convert any combination of rows and columns to indices."""
+
+                indices = (
+                        {'row': rows[0], 'column': columns[0]},
+                        {'row': rows[-1], 'column': columns[-1]}
+                        )
+                return indices
+
+            if direction not in ['U', 'V']:
+                raise KeyError("Selected flow direction must be 'U' or 'V'")
+
+            indices = get_cell_indices(diff_rows, diff_columns)
+            flow = [{}, {}]
+            for i, index in enumerate(indices):
+                # Control if cell in droplet
+                if not cells[index['row']][index['column']]['droplet']:
+                    raise Exception
+
+                flow[i]['mass'] = cells[index['row']][index['column']]['M']
+                flow[i]['flow'] = cells[index['row']][index['column']][direction]
+                flow[i]['mass_flow'] = flow[i]['mass']*flow[i]['flow']
+
+            if not mass_flow:
+                difference = flow[1]['flow'] - flow[0]['flow']
+            else:
+                total_mass = flow[0]['mass'] + flow[1]['mass']
+                if total_mass != 0.:
+                    difference = (flow[1]['mass_flow'] - flow[0]['mass_flow'])/total_mass
+                else:
+                    difference = 0.
+
+            if difference == 0.:
+                return difference
+
+            return difference/(2*N*dx)
+
+        def shear_in_cell(cells, row, column, N, size, mass_flow):
+            """
+            Calculate the shear in one cell. Base calculations
+            on mass flow by setting mass_flow to True.
+
+            """
+
+            dx = size['X']
+            dy = size['Y']
+
+            rows = [row - N, row + N]
+            columns = [column - N, column + N]
+
+            try:
+                dudx = calc_central_difference(cells, 'U', N, dx, [row], columns)
+                dvdx = calc_central_difference(cells, 'V', N, dx, [row], columns)
+                dudy = calc_central_difference(cells, 'U', N, dy, rows, [column])
+                dvdy = calc_central_difference(cells, 'V', N, dy, rows, [column])
+
+                shear = np.sqrt(2*(dudx**2 + dvdy**2 - (1/3)*(dudx + dvdy)**2)
+                        + (dudy + dvdx)**2)
+
+            # Catch if some cell involved in calculation is not part of droplet
+            except Exception:
+                shear = 0.
+
+            return shear
+
+        size = self.info['cells']['size']
+
+        for cell_row in self.cells:
+            for cell in cell_row:
+                cell['shear'] = 0.
+
+        # Cell borders must be N deep
+        for i, cell_row in enumerate(self.cells[N:-N]):
+            row = i + N
+            for j, cell in enumerate(cell_row[N:-N]):
+                column = j + N
+                if cell['droplet']:
+                    shear = shear_in_cell(self.cells, row, column, N, size, mass_flow)
+                    self.cells[row][column]['shear'] = shear
+
+        return None
+
     def _calc_viscous_dissipation(self, N=1, viscosity=0.642e-3,
             width=1., delta_t=1., mass_flow=False):
         """
