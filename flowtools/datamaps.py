@@ -35,6 +35,7 @@ import numpy as np
 import os
 import pylab as plt
 import struct
+import sys
 
 class Spread(object):
     """
@@ -809,7 +810,7 @@ class DataMap(object):
 
         return _info
 
-    def combine(self, nx=1, ny=1):
+    def combine(self, nx=1, ny=1, verbose=False):
         """
         Combine cells of DataMap into larger ones, the number of which given
         by kwargs 'nx' and 'ny' for cells in x and y respectively. If an even
@@ -840,9 +841,37 @@ class DataMap(object):
 
             """
 
+            def print_add_cell(cell, final):
+                print("X = %.3f, Y = %.3f" % (cell['X'], cell['Y']))
+                print("N = %.3f + %.3f" % (final['N'], cell['N']))
+                print("M = %.3f + %.3f" % (final['M'], cell['M']))
+                print("T = %.3f + (N=%.3f)*%.3f" % (final['T'], cell['N'], cell['T']))
+                print("U = %.3f + (M=%.3f)*%.3f" % (final['U'], cell['M'], cell['U']))
+                print("V = %.3f + (M=%.3f)*%.3f" % (final['V'], cell['M'], cell['V']))
+
+                return None
+
+            def print_avg_cell(final):
+                print("X = %.3f, Y = %.3f" % (final['X']/len(cell_list), final['Y']/len(cell_list)))
+                print("N = %.3f" % final['N'])
+                print("M = %.3f" % final['M'])
+                print("T = T/N = %.3f/%.3f = %.3f"
+                        % (final['T'], final['N'], final['T']/final['N']))
+                print("U = U/M = %.3f/%.3f = %.3f"
+                        % (final['U'], final['M'], final['U']/final['M']))
+                print("V = V/M = %.3f/%.3f = %.3f"
+                        % (final['V'], final['M'], final['V']/final['M']))
+
             with self.FlatArray(all_cells.cells) as cell_list:
-                final = cell_list[0]
-                for i, cell in enumerate(cell_list[1:]):
+                # Create cell to collect data into
+                final = {var: 0. for var in ['X', 'Y', 'N', 'M', 'T', 'U', 'V']}
+                final['droplet'] = False
+
+                for i, cell in enumerate(cell_list[0:]):
+                    if verbose:
+                        print("Adding cell %d:" % i)
+                        print_add_cell(cell, final)
+
                     # Add variables
                     for var in ['X', 'Y', 'M', 'N']:
                         final[var] += cell[var]
@@ -854,6 +883,10 @@ class DataMap(object):
                     # Att temperate, scaled by N
                     final['T'] += cell['T']*cell['N']
                     final['droplet'] = final['droplet'] or cell['droplet']
+
+                if verbose:
+                    print("Final cell:")
+                    print_avg_cell(final)
 
                 # Average positions
                 for var in ['X', 'Y']:
@@ -868,13 +901,23 @@ class DataMap(object):
                 if final['N'] > 0:
                     final['T'] /= final['N']
 
+                if verbose:
+                    print(final)
+
             return final
 
         num_combine = {'X': nx, 'Y': ny}
+        if verbose:
+            print("Combining %d cells along x and %d along y."
+                    % (num_combine['X'], num_combine['Y']))
 
         num_cells = {}
         for var, n in self._info['cells']['num_cells'].items():
             num_cells[var] = int(n/num_combine[var])
+        if verbose:
+            print("Combining %dx%d cells into %dx%d."
+                    % (self.info['cells']['num_cells']['X'], self.info['cells']['num_cells']['Y'],
+                        num_cells['X'], num_cells['Y']))
 
         # Quickly create a DataMap of final size by cutting self
         combined = DataMap(None)
@@ -882,7 +925,8 @@ class DataMap(object):
                 0:num_cells['Y'],
                 0:num_cells['X']
                 ]
-        combined._info = combined.info
+        if verbose:
+            print(combined.info)
 
         # Go through all cells in new system
         for x in range(num_cells['X']):
@@ -890,7 +934,13 @@ class DataMap(object):
 
                 # Find cells to include
                 cell_num = {'X': x, 'Y': y}
+                if verbose:
+                    print("Finding cells to include for output cell (%d,%d):"
+                            % (x, y), end=' ')
                 cutx, cuty = find_cells(cell_num, num_combine)
+                if verbose:
+                    print("[%d:%d, %d:%d]" % (cutx[0], cutx[1], cuty[0], cuty[1]))
+                    sys.stdout.flush()
 
                 # Combine cells
                 new = self.cut(cutx=cutx, cuty=cuty, input_is_cells=True)

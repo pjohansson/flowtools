@@ -33,15 +33,16 @@ parser = argparse.ArgumentParser(
 # Input base arguments
 parser.add_argument('-f', '--file', type=str, required=True,
         help="datamap to combine cells of")
-parser.add_argument('-s', '--save', type=str, required=True,
-        help="save datamap to this file")
+parser.add_argument('-o', '--output', type=str, required=True,
+        help="output datamap to this file")
 parser.add_argument('-n', '--num_cells', type=int, nargs=2, required=True,
         help="combine this many cells in directions corresponding to x and y")
+parser.add_argument('-d', '--debug', action='store_true', help="output debug information")
 
 args = parser.parse_args()
 
 data = DataMap(args.file)
-combined = data.combine(nx=args.num_cells[0], ny=args.num_cells[1])
-combined.save(args.save)
+combined = data.combine(nx=args.num_cells[0], ny=args.num_cells[1], verbose=args.debug)
+combined.save(args.output)
 
 
