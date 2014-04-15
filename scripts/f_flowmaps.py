@@ -53,7 +53,7 @@ def draw_colourmap(densmap, quantity, xlims, ylims):
             values.append(cell[_type])
 
     # Draw quantity as 2D histogram for speed
-    plt.hist2d(x, y, weights=values, bins=shape, cmin=args.Tmin, cmax=args.Tmax)#, xlim=xlims, ylim=ylims)
+    plt.hist2d(x, y, weights=values, bins=shape, vmin=args.Tmin, vmax=args.Tmax)#, xlim=xlims, ylim=ylims)
     plt.axis(args.axis)
     plt.xlim(xlims)
     plt.ylim(ylims)
