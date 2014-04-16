@@ -648,6 +648,8 @@ class DataMap(object):
         floor - get the lowest row of the system with 'droplet' cells
         info - get information from the DataMap
         interface - get a list of droplet interface coordinates
+        mean - get the mean, standard deviation and standard error of some variable
+        print - a simple print to stdout of system
         save - save the DataMap to a file
 
     Classes:
@@ -1254,10 +1256,15 @@ class DataMap(object):
 
         return None
 
-    def interface(self):
+    def interface(self, get_cell_numbers=False):
         """
         Find interface cells of droplets and return ordered list of
-        cell center coordinates.
+        cell center coordinates by default, or cell numbers by calling
+        with 'get_cell_numbers=True'.
+
+        Cells are ordered counting from the left edge to the right along
+        the interface, with the final cell being the right contact line
+        edge.
 
         See also:
             self.draw_interface()
@@ -1267,21 +1274,51 @@ class DataMap(object):
         """
 
         cells = {'left': [], 'right': []}
+        for i, row in enumerate(self.cells):
+            for j, cell in enumerate(row):
+                if cell['droplet']:
+                    if get_cell_numbers:
+                        cells['left'].append([j, i])
+                    else:
+                        cells['left'].append([cell['X'], cell['Y']])
+                    break
+
+            for j, cell in enumerate(reversed(row)):
+                if cell['droplet']:
+                    if get_cell_numbers:
+                        cells['right'].append([len(row)-j-1, i])
+                    else:
+                        cells['right'].append([cell['X'], cell['Y']])
+                    break
+
+        interface = cells['left']
+        interface.extend(reversed(cells['right']))
+
+        return interface
+
+    def mean(self, variable, if_droplet=True):
+        """
+        From a given variable of 'M', 'N', 'T', 'U' and 'V' calculates the
+        mean, standard deviation and standard error of entire system.
+
+        By default only 'droplet' cells are included in calculation,
+        supply 'if_droplet=False' to use all cells.
+
+        """
+
+        values = []
         for row in self.cells:
             for cell in row:
-                if cell['droplet']:
-                    cells['left'].append([cell['X'], cell['Y']])
-                    break
+                if not if_droplet or cell['droplet']:
+                    values.append(cell[variable])
 
-            for cell in reversed(row):
-                if cell['droplet']:
-                    cells['right'].append([cell['X'], cell['Y']])
-                    break
+        data = {
+                'mean': np.mean(values),
+                'stdev': np.std(values),
+                }
+        data['stderr'] = data['stdev']/np.sqrt(len(values))
 
-        coordinates = cells['left']
-        coordinates.extend(reversed(cells['right']))
-
-        return coordinates
+        return data
 
     def print(self, droplet=False, order=['X', 'Y', 'N', 'T', 'M', 'U', 'V'],
             **kwargs):

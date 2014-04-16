@@ -7,7 +7,7 @@ setup(
         description="Tools for flow maps from modified Gromacs simulations",
         long_description="See README.md",
         license='GPLv3',
-        version='0.2.11',
+        version='0.2.30',
         url="https://github.com/pjohansson/flowtools",
         author="Petter Johansson",
         author_email="petter.johansson@scilifelab.se",
@@ -34,6 +34,7 @@ setup(
             'scripts/f_combine_cells.py',
             'scripts/f_viscous_dissipation.py',
             'scripts/f_interface.py',
-            'scripts/f_shearmax.py'
+            'scripts/f_shearmax.py',
+            'scripts/f_contactline.py'
             ]
         )
