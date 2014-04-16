@@ -647,6 +647,8 @@ class DataMap(object):
         floor - get the lowest row of the system with 'droplet' cells
         info - get information from the DataMap
         interface - get a list of droplet interface coordinates
+        mean - get the mean, standard deviation and standard error of some variable
+        print - a simple print to stdout of system
         save - save the DataMap to a file
 
     Classes:

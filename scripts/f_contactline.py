@@ -152,9 +152,7 @@ def do_analysis(data, datamap):
         print("(1/ps)", end='   ')
 
     print("stdev = %g" % system['stdev'], end='   ')
-    print("stderr = %g" % system['stderr'], end='   ')
-
-
+    print("stderr = %g" % system['stderr'])
 
     return None
 
