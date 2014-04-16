@@ -1204,10 +1204,15 @@ class DataMap(object):
 
         return None
 
-    def interface(self):
+    def interface(self, get_cell_numbers=False):
         """
         Find interface cells of droplets and return ordered list of
-        cell center coordinates.
+        cell center coordinates by default, or cell numbers by calling
+        with 'get_cell_numbers=True'.
+
+        Cells are ordered counting from the left edge to the right along
+        the interface, with the final cell being the right contact line
+        edge.
 
         See also:
             self.draw_interface()
@@ -1217,21 +1222,27 @@ class DataMap(object):
         """
 
         cells = {'left': [], 'right': []}
-        for row in self.cells:
-            for cell in row:
+        for i, row in enumerate(self.cells):
+            for j, cell in enumerate(row):
                 if cell['droplet']:
-                    cells['left'].append([cell['X'], cell['Y']])
+                    if get_cell_numbers:
+                        cells['left'].append([j, i])
+                    else:
+                        cells['left'].append([cell['X'], cell['Y']])
                     break
 
-            for cell in reversed(row):
+            for j, cell in enumerate(reversed(row)):
                 if cell['droplet']:
-                    cells['right'].append([cell['X'], cell['Y']])
+                    if get_cell_numbers:
+                        cells['right'].append([len(row)-j-1, i])
+                    else:
+                        cells['right'].append([cell['X'], cell['Y']])
                     break
 
-        coordinates = cells['left']
-        coordinates.extend(reversed(cells['right']))
+        interface = cells['left']
+        interface.extend(reversed(cells['right']))
 
-        return coordinates
+        return interface
 
     def print(self, droplet=False, order=['X', 'Y', 'N', 'T', 'M', 'U', 'V'],
             **kwargs):

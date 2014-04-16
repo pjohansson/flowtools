@@ -110,6 +110,7 @@ for frame, _file in enumerate(system.datamaps):
     datamap = DataMap(_file, min_mass = args.min_mass)
 
     datamap.draw_interface()
+
     plt.axis(args.axis)
     plt.xlim(xlims)
     plt.ylim(ylims)
