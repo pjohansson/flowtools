@@ -1244,6 +1244,30 @@ class DataMap(object):
 
         return interface
 
+    def mean(self, variable, if_droplet=True):
+        """
+        From a given variable of 'M', 'N', 'T', 'U' and 'V' calculates the
+        mean, standard deviation and standard error of entire system.
+
+        By default only 'droplet' cells are included in calculation,
+        supply 'if_droplet=False' to use all cells.
+
+        """
+
+        values = []
+        for row in self.cells:
+            for cell in row:
+                if not if_droplet or cell['droplet']:
+                    values.append(cell[variable])
+
+        data = {
+                'mean': np.mean(values),
+                'stdev': np.std(values),
+                }
+        data['stderr'] = data['stdev']/np.sqrt(len(values))
+
+        return data
+
     def print(self, droplet=False, order=['X', 'Y', 'N', 'T', 'M', 'U', 'V'],
             **kwargs):
         """

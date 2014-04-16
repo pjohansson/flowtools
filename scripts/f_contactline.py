@@ -129,20 +129,32 @@ def to_print_separator(columns):
 
     return False
 
-def do_analysis(data):
+def do_analysis(data, datamap):
     """
     Perform some statistics analysis on contact line data.
 
     """
 
-    print("mean: %g" % np.mean(data), end=' ')
+    print("contact line: mean = %g" % np.mean(data), end=' ')
     if args.type == 'temp':
         print("(K)", end='   ')
     elif args.type == 'shear':
         print("(1/ps)", end='   ')
 
-    print("stdev: %g" % np.std(data), end='   ')
-    print("stderr: %g" % (np.std(data)/np.sqrt(len(data))), end='   ')
+    print("stdev = %g" % np.std(data), end='   ')
+    print("stderr = %g" % (np.std(data)/np.sqrt(len(data))))
+
+    system = datamap.mean(var)
+    print("      system: mean = %g" % system['mean'], end=' ')
+    if args.type == 'temp':
+        print("(K)", end='   ')
+    elif args.type == 'shear':
+        print("(1/ps)", end='   ')
+
+    print("stdev = %g" % system['stdev'], end='   ')
+    print("stderr = %g" % system['stderr'], end='   ')
+
+
 
     return None
 
@@ -190,7 +202,6 @@ if args.type == 'temp':
 elif args.type == 'shear':
     var = 'shear'
 
-
 for frame, _file in enumerate(system.datamaps):
     if len(system.datamaps) > 1:
         print("\n==> %s <==" % _file)
@@ -214,6 +225,6 @@ for frame, _file in enumerate(system.datamaps):
         print_positions(datamap.cells[row], columns)
 
     if args.statistics:
-        do_analysis(data)
+        do_analysis(data, datamap)
 
 print()
