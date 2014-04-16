@@ -25,6 +25,7 @@ import argparse
 import numpy as np
 import os
 import pylab as plt
+import sys
 
 from flowtools.datamaps import System, DataMap
 
@@ -123,6 +124,8 @@ draw_args.add_argument('--shear_numcells', '-sn', type=int, default=1,
         "shear calculation")
 draw_args.add_argument('--shear_massflow', action='store_true',
         help="use mass flow when calculation shear in cells")
+draw_args.add_argument('--quiet', '-q', action='store_true',
+        help="talk less")
 
 # Decorations
 label_args = parser.add_argument_group('label options',
@@ -158,9 +161,14 @@ for frame, _file in enumerate(system.datamaps):
         save = ''
 
 
-    print("Reading %s (%d of %d) ... " % (_file, frame+1, len(system.datamaps)), end='')
+    if not args.quiet:
+        print("\rReading %s (%d of %d) ... " % (_file, frame+1, len(system.datamaps)), end='')
+        sys.stdout.flush()
+
     datamap = DataMap(_file, min_mass = args.min_mass)
-    print("Done!")
+
+    if not args.quiet:
+        print("Done!", end='')
 
     if args.type == 'flow':
         datamap.flow(
@@ -175,3 +183,6 @@ for frame, _file in enumerate(system.datamaps):
         if args.type == 'shear':
             datamap._calc_cell_shear(args.shear_numcells, args.shear_massflow)
         draw_colourmap(datamap, args.type, xlims, ylims)
+
+if not args.quiet:
+    print()
