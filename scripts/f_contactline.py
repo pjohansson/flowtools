@@ -44,7 +44,8 @@ def print_row(cells, columns, data):
 
         for col in columns:
             if cells[col]['droplet']:
-                data.append(cells[col][var])
+                if not (args.type == 'shear' and cells[col][var] == 0):
+                    data.append(cells[col][var])
                 print(" %8g" % cells[col][var], end='')
             else:
                 print(" %8s" % '', end='')
@@ -176,6 +177,9 @@ parser.add_argument('-n', '--num_cells', type=int, nargs=2, default=[1,1],
 parser.add_argument('--type', '-t', default='temp',
         choices=['shear', 'temp'],
         help="work on this data for output (default: temp)")
+parser.add_argument('--shear_numcells', '-sn', type=int, default=1,
+        help="number of cells to take finite difference over when calculating"
+        "velocity for shear calculation")
 parser.add_argument('--statistics', action='store_true',
         help="output statistics on contact line data")
 parser.add_argument('--sparse', action='store_true',
@@ -205,6 +209,9 @@ for frame, _file in enumerate(system.datamaps):
         print("\n==> %s <==" % _file)
 
     datamap = DataMap(_file, min_mass = args.min_mass)
+
+    if args.type == 'shear':
+        datamap._calc_cell_shear(args.shear_numcells)
 
     interface = datamap.interface(get_cell_numbers=True)
     floor = interface[0][1]
