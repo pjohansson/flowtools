@@ -44,27 +44,31 @@ def print_row(cells, columns, data):
 
         for col in columns:
             if cells[col]['droplet']:
-                if not (args.type == 'shear' and cells[col][var] == 0):
-                    data.append(cells[col][var])
-                print(" %8g" % cells[col][var], end='')
-            else:
-                print(" %8s" % '', end='')
+                data.append(cells[col][var])
+
+            if args.do_output:
+                if cells[col]['droplet']:
+                    print(" %8.4g" % cells[col][var], end='')
+                else:
+                    print(" %8s" % '', end='')
 
         return None
 
     def print_height(cells):
         print("%8g |" % cells[0]['Y'], end='')
+        return None
 
-    if args.header:
+    if args.do_output and args.header:
         print_height(cells)
 
     print_columns(cells, columns[:int(len(columns)/2)], data)
-    if print_separator:
+    if args.do_output and print_separator:
         print("    ...   ", end='')
     print_columns(cells, columns[int(len(columns)/2):], data)
-    print()
+    if args.do_output:
+        print()
 
-    if args.sparse:
+    if args.do_output and args.sparse:
         print("%8s |" % ' ')
 
     return None
@@ -109,11 +113,11 @@ def print_positions(cells, columns):
     print_footer(columns)
     print("%8s  " % "X (nm)", end='')
     for col in columns[:int(len(columns)/2)]:
-        print(" %8g" % cells[col]['X'], end='')
+        print(" %8.4g" % cells[col]['X'], end='')
     if print_separator:
         print("    ...   ", end='')
     for col in columns[int(len(columns)/2):]:
-        print(" %8g" % cells[col]['X'], end='')
+        print(" %8.4g" % cells[col]['X'], end='')
     print()
 
     return None
@@ -136,24 +140,24 @@ def do_analysis(data, datamap):
 
     """
 
-    print("contact line: mean = %g" % np.mean(data), end=' ')
+    print("contact line: mean = %8.4g" % np.mean(data), end=' ')
     if args.type == 'temp':
         print("(K)", end='   ')
     elif args.type == 'shear':
         print("(1/ps)", end='   ')
 
-    print("stdev = %g" % np.std(data), end='   ')
-    print("stderr = %g" % (np.std(data)/np.sqrt(len(data))))
+    print("stdev = %8.4g" % np.std(data), end='   ')
+    print("stderr = %8.4g" % (np.std(data)/np.sqrt(len(data))))
 
     system = datamap.mean(var)
-    print("      system: mean = %g" % system['mean'], end=' ')
+    print("      system: mean = %8.4g" % system['mean'], end=' ')
     if args.type == 'temp':
         print("(K)", end='   ')
     elif args.type == 'shear':
         print("(1/ps)", end='   ')
 
-    print("stdev = %g" % system['stdev'], end='   ')
-    print("stderr = %g" % system['stderr'])
+    print("stdev = %8.4g" % system['stdev'], end='   ')
+    print("stderr = %8.4g" % system['stderr'])
 
     return None
 
@@ -180,12 +184,17 @@ parser.add_argument('--type', '-t', default='temp',
 parser.add_argument('--shear_numcells', '-sn', type=int, default=1,
         help="number of cells to take finite difference over when calculating"
         "velocity for shear calculation")
+parser.add_argument('--shear_remove_edges', action='store_true',
+        help="remove edge cells of shear droplets, excluded from finite cell"
+        "difference calculations")
 parser.add_argument('--statistics', action='store_true',
         help="output statistics on contact line data")
 parser.add_argument('--sparse', action='store_true',
         help="sparse output")
 parser.add_argument('--noheaders', action='store_false', dest='header',
         help="do not output position and height headers")
+parser.add_argument('--nooutput', action='store_false', dest='do_output',
+        help="do not output cells")
 
 # Parse and control for action
 args = parser.parse_args()
@@ -211,7 +220,8 @@ for frame, _file in enumerate(system.datamaps):
     datamap = DataMap(_file, min_mass = args.min_mass)
 
     if args.type == 'shear':
-        datamap._calc_cell_shear(args.shear_numcells)
+        datamap._calc_cell_shear(args.shear_numcells, mass_flow=False,
+                if_droplet=args.shear_remove_edges)
 
     interface = datamap.interface(get_cell_numbers=True)
     floor = interface[0][1]
@@ -226,7 +236,7 @@ for frame, _file in enumerate(system.datamaps):
     for row in range(ceil, floor-1, -1):
         print_row(datamap.cells[row], columns, data)
 
-    if args.header:
+    if args.do_output and args.header:
         print_positions(datamap.cells[row], columns)
 
     if args.statistics:

@@ -1464,11 +1464,15 @@ class DataMap(object):
 
         return energy
 
-    def _calc_cell_shear(self, N=1, mass_flow=False):
+    def _calc_cell_shear(self, N=1, mass_flow=False, if_droplet=False):
         """
         Calculate the fluid shear inside all cells by taking finite central
         differences over surrounding N cells. Shear in terms of 1/ps saved
         as keyword 'shear' in droplet cell dictionaries.
+
+        Specify 'mass_flow = True' to base shear calculations on mass flow
+        instead of absolute, 'if_droplet = True' to remove cells without
+        shear from 'droplet' status.
 
         """
 
@@ -1559,6 +1563,16 @@ class DataMap(object):
                 if cell['droplet']:
                     shear = shear_in_cell(self.cells, row, column, N, size, mass_flow)
                     self.cells[row][column]['shear'] = shear
+
+        # Remove droplets with zero shear from 'droplet' status
+        if if_droplet:
+            for i, cell_row in enumerate(self.cells[N:-N]):
+                row = i + N
+                for j, cell in enumerate(cell_row[N:-N]):
+                    column = j + N
+
+                    if self.cells[row][column]['shear'] == 0.:
+                        self.cells[row][column]['droplet'] = False
 
         return None
 
