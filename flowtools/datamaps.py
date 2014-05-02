@@ -1566,10 +1566,8 @@ class DataMap(object):
 
         # Remove droplets with zero shear from 'droplet' status
         if if_droplet:
-            for i, cell_row in enumerate(self.cells[N:-N]):
-                row = i + N
-                for j, cell in enumerate(cell_row[N:-N]):
-                    column = j + N
+            for row, cell_row in enumerate(self.cells):
+                for column, cell in enumerate(cell_row):
 
                     if self.cells[row][column]['shear'] == 0.:
                         self.cells[row][column]['droplet'] = False
