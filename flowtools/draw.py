@@ -38,6 +38,7 @@ def draw(func):
         legend = kwargs.pop('legend', False)
         save = kwargs.pop('save', '')
         show = kwargs.pop('show', False)
+        transparent = kwargs.pop('transparent', False)
         xlim = kwargs.pop('xlim', None)
         ylim = kwargs.pop('ylim', None)
 
@@ -72,7 +73,7 @@ def draw(func):
 
         # Save
         if save:
-            plt.savefig(save, dpi = dpi)
+            plt.savefig(save, dpi = dpi, transparent = transparent)
 
         # Show
         if show:
