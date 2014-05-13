@@ -36,6 +36,7 @@ def draw(func):
         invert_x = kwargs.pop('invert_x', False)
         invert_y = kwargs.pop('invert_y', False)
         legend = kwargs.pop('legend', False)
+        noaxis = kwargs.pop('noaxis', False)
         save = kwargs.pop('save', '')
         show = kwargs.pop('show', False)
         transparent = kwargs.pop('transparent', False)
@@ -70,6 +71,8 @@ def draw(func):
             plt.legend()
         if colorbar:
             plt.colorbar()
+        if noaxis:
+            plt.axis('off')
 
         # Save
         if save:

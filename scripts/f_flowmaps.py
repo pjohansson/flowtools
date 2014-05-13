@@ -99,6 +99,8 @@ output_args.add_argument('--save', default='', metavar='PATH',
 output_args.add_argument('--dpi', default=150, type=int, help="output graph dpi")
 output_args.add_argument('--transparent', '-trans', action='store_true',
         help="save image with transparent background")
+output_args.add_argument('--noaxis', action='store_true',
+        help="output without axis")
 
 # Options
 draw_args = parser.add_argument_group('draw options',
@@ -177,7 +179,7 @@ for frame, _file in enumerate(system.datamaps):
                 show = args.show, save = save, dpi = args.dpi, transparent = args.transparent,
                 temp = args.temp, clim = [args.Tmin, args.Tmax],
                 color = args.colour, xlim = xlims, ylim = ylims,
-                axis = args.axis,
+                axis = args.axis, noaxis = args.noaxis,
                 width = args.width, scale = args.scale,
                 xlabel = args.xlabel, ylabel = args.ylabel, title = args.title
                 )
