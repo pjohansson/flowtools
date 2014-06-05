@@ -263,10 +263,45 @@ class Spread(object):
     def read(self, _path):
         """Read spread information from a file at _path."""
 
-        self._reset()
+        def read_xvg(_file):
+            """
+            Read spread information from a .xvg file. Data columns of
+            file must be:
 
-        with open(_path) as _file:
-            # Read general information until Spreading
+                time(ps) radius(nm)
+
+            with space separation.
+
+            """
+
+            def add_line(time, radius):
+                self.times.append(time)
+                self.radius.append(radius)
+                self.diameter.append(2*radius)
+                self.left.append(-radius)
+                self.right.append(radius)
+                self.com.append(0.)
+                self.dist.append(0.)
+
+                return None
+
+            lines = _file.readlines()
+
+            for line in lines:
+                try:
+                    time, radius = map(float, line.strip().split())
+                    add_line(time, radius)
+                except ValueError:
+                    next
+
+            self.floor = 0
+            self.delta_t = self.times[-1]/len(self.times)
+            self.min_mass = 0.
+
+            return None
+
+        def read_std(_file):
+            """Read from standard home brewn format."""
             line = _file.readline().strip()
 
             while not line.lower().startswith('spread:'):
@@ -292,7 +327,19 @@ class Spread(object):
 
                 line = _file.readline().strip()
 
-        self._calc_diamrad()
+            self._calc_diamrad()
+
+            return None
+
+        self._reset()
+
+        with open(_path) as _file:
+            if _path.endswith('.xvg'):
+                read_xvg(_file)
+            else:
+                read_std(_file)
+
+
         return self
 
     def save(self, _path):
