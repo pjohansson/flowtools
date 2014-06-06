@@ -19,6 +19,8 @@
 import argparse
 import numpy as np
 import pylab as plt
+import os
+import shutil
 
 from flowtools.datamaps import Spread
 from flowtools.draw import plot_line
@@ -26,6 +28,91 @@ from flowtools.utils import calc_radius, combine_spread, get_colours, get_labels
 
 def spread_plot(args):
     """Draw the spreading of sets of droplets as a function of time."""
+
+    def add_xvgdata(spread, xvg_set):
+        """
+        Adds data for current line to list of data to output in
+        .xvg format.
+
+        """
+        add = {}
+        line = []
+        for _type in plot_type:
+            add['legend'] = labels[i]
+            add['line'] = spread.spread[_type]['val'][0:]
+            add['time'] = np.array(spread.times[0:])
+            line.append(add.copy())
+
+        xvg_set.append(line)
+
+        return None
+
+    def save_xvgdata(xvg_data):
+        """
+        Saves spreading lines to .xvg files of input filenames.
+
+        """
+
+        def print_xvgfile(line, fnout):
+
+            with open(fnout, 'w') as _file:
+                _file.write(
+                        "@ title \"%s\"\n"
+                        "@ xaxis label \"%s\"\n"
+                        "@ yaxis label \"%s\"\n"
+                        "@TYPE xy"
+                        % (args.title, args.xlabel, args.ylabel)
+                        )
+
+                # Output legend information
+                _file.write(
+                        "@ legend on\n"
+                        "@ legend box on\n"
+                        "@ legend loctype view\n"
+                        "@ legend 0.78 0.8\n"
+                        "@ legend length 2\n"
+                        "@s0 legend \"%s\"\n\n"
+                        % line[0]['legend']
+                        )
+
+                for i in range(len(line[0]['time'])):
+                    time = line[0]['time'][i]
+                    _file.write("%f " % time)
+                    for j in range(len(line)):
+                        value = line[j]['line'][i]
+                        _file.write("%f " % value)
+                    _file.write("\n")
+
+            return None
+
+        for i, xvg_set in enumerate(xvg_data):
+            for j, line in enumerate(xvg_set):
+                # Replace last extension with .xvg
+                fnin = args.spreading[i][j]
+
+                n = 0
+                fnout = fnin.rsplit('.', 1)[0] + '.xvg'
+                fnmv = fnout
+
+                # Control if file exists and backup instead of overwriting
+                while (os.path.isfile(fnmv)):
+                    n += 1
+                    try:
+                        _path, _file = fnout.rsplit('/', 1)
+                        _path += '/'
+                    except ValueError:
+                        _path = ''
+                        _file = fnout
+
+                    fnmv = _path + '#' + _file.rsplit('.', 1)[0] + '.xvg.%d#' % n
+
+                if (n > 0):
+                    print("File '%s' backed up to '%s'" % (fnout, fnmv))
+                    shutil.move(fnout, fnmv)
+
+                print_xvgfile(line, fnout)
+
+        return None
 
     def plot_data(spread, times):
         """Plot either edges or radius of specified line."""
@@ -126,24 +213,35 @@ def spread_plot(args):
     shift_array = get_shift(args.spreading, sync=args.sync,
             radius_array=scaling['radius'], radius_fraction=args.sync_radius_fraction)
 
+    # Initiate xvg data
+    xvgdata = []
+
     for i, spread_list in enumerate(args.spreading):
         spread, data = combine_spread(spread_list, shift=shift_array[i])
         apply_scaling(spread, data, scaling, i)
 
-        # If no mean, draw individual lines here
-        label = labels[i]
-        if args.nomean:
-            for spread_data in data:
-                plot_data(spread_data.spread, spread_data.times)
-                label = '_nolegend_'
-
-        # Else draw the mean result
+        # Either draw all or a combined line; set which set here
+        xvg_set = []
+        if not args.nomean:
+            spread_array = [spread]
         else:
-            plot_data(spread.spread, spread.times)
+            spread_array = data
+
+        label = labels[i]
+        for spread_data in spread_array:
+            plot_data(spread_data.spread, spread_data.times)
+            label = '_nolegend_'
+
+            if args.xvg:
+                add_xvgdata(spread_data, xvg_set)
 
         # If error for line is desired, calculate and plot
         if args.error:
             plot_error(spread)
+
+        # Add set of xvg data to array
+        if args.xvg:
+            xvgdata.append(xvg_set)
 
     plt.title(args.title, fontsize='medium')
     plt.xlabel(args.xlabel, fontsize='medium')
@@ -168,6 +266,9 @@ def spread_plot(args):
                 transparent=args.transparent,
                 bbox_inches='tight'
                 )
+
+    if args.xvg:
+        save_xvgdata(xvgdata)
 
     if args.show:
         plt.show()
@@ -195,6 +296,8 @@ if __name__ == '__main__':
             help="optionally save output image to path")
     line.add_argument('--dpi', type=int, default=150,
             help="DPI of output image")
+    line.add_argument('-x', '--xvg', action='store_true',
+            help="output .xvg file with spreading data")
 
     line.add_argument('--loglog', action='store_true',
             help="draw graph with logarithms of the x and y axis")
@@ -289,7 +392,6 @@ if __name__ == '__main__':
             help="label of y axis")
 
     args = parser.parse_args()
-
 
     # Modify the plot type to allow for several edge plots
     if args.plot_type == 'edges':
