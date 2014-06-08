@@ -60,7 +60,7 @@ def spread_plot(args):
                         "@ title \"%s\"\n"
                         "@ xaxis label \"%s\"\n"
                         "@ yaxis label \"%s\"\n"
-                        "@TYPE xy"
+                        "@TYPE xy\n"
                         % (args.title, args.xlabel, args.ylabel)
                         )
 
