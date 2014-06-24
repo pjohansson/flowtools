@@ -53,8 +53,10 @@ def spread_plot(args):
 
         """
 
-        def print_xvgfile(line, fnout):
+        def print_xvgfile(line, fnin):
 
+            fnout = fnin.rsplit('.', 1)[0] + '.xvg'
+            backup_file(fnout)
             with open(fnout, 'w') as _file:
                 _file.write(
                         "@ title \"%s\"\n"
@@ -85,32 +87,42 @@ def spread_plot(args):
 
             return None
 
+        def backup_file(fn):
+            """If a file 'fn' exists, move to backup location."""
+
+            fnmv = fn
+
+            n = 0
+            while (os.path.isfile(fnmv)):
+                n += 1
+                try:
+                    _path, _file = fn.rsplit('/', 1)
+                    _path += '/'
+                except ValueError:
+                    _path = ''
+                    _file = fn
+
+                fnmv = _path + '#' + _file.rsplit('.', 1)[0] + '.xvg.%d#' % n
+
+            if (n > 0):
+                print("File '%s' backed up to '%s'" % (fn, fnmv))
+                shutil.move(fn, fnmv)
+
+            return None
+
         for i, xvg_set in enumerate(xvg_data):
-            for j, line in enumerate(xvg_set):
-                # Replace last extension with .xvg
-                fnin = args.spreading[i][j]
+            # Print either all lines to separate files with extension switch
+            if args.nomean:
+                for j, line in enumerate(xvg_set):
+                    # Replace last extension with .xvg
+                    fnin = args.spreading[i][j]
+                    print_xvgfile(line, fnin)
 
-                n = 0
-                fnout = fnin.rsplit('.', 1)[0] + '.xvg'
-                fnmv = fnout
-
-                # Control if file exists and backup instead of overwriting
-                while (os.path.isfile(fnmv)):
-                    n += 1
-                    try:
-                        _path, _file = fnout.rsplit('/', 1)
-                        _path += '/'
-                    except ValueError:
-                        _path = ''
-                        _file = fnout
-
-                    fnmv = _path + '#' + _file.rsplit('.', 1)[0] + '.xvg.%d#' % n
-
-                if (n > 0):
-                    print("File '%s' backed up to '%s'" % (fnout, fnmv))
-                    shutil.move(fnout, fnmv)
-
-                print_xvgfile(line, fnout)
+            # Or print combined lines to files with base filename as first file
+            else:
+                line = xvg_set[0]
+                fnin = args.spreading[i][0]
+                print_xvgfile(line, fnin)
 
         return None
 
@@ -222,10 +234,10 @@ def spread_plot(args):
 
         # Either draw all or a combined line; set which set here
         xvg_set = []
-        if not args.nomean:
-            spread_array = [spread]
-        else:
+        if args.nomean:
             spread_array = data
+        else:
+            spread_array = [spread]
 
         label = labels[i]
         for spread_data in spread_array:

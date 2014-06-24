@@ -39,6 +39,7 @@ nosetests.xml
 # Editor files
 *~
 *.swp
+*.swo
 
 # Data and images
 *.dat
